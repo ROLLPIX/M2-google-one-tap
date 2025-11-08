@@ -63,9 +63,15 @@ class Response implements CsrfAwareActionInterface
                 'method' => $this->request->getMethod()
             ]);
 
-            // Validate ID token
-            $idToken = $this->request->getParam('id_token');
+            // Validate ID token - use getPostValue() directly since getParam() may not work with POST body
+            $postData = $this->request->getPostValue();
+            $idToken = $postData['id_token'] ?? null;
+
             if (!$idToken) {
+                $this->logger->error('Missing ID token after extraction', [
+                    'post_data' => $postData,
+                    'get_param_result' => $this->request->getParam('id_token')
+                ]);
                 throw new InputException(__('Missing ID token.'));
             }
 
