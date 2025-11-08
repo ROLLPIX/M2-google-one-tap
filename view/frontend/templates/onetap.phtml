@@ -1,0 +1,89 @@
+<?php
+/**
+ * @var OneTap $block
+ * @var Escaper $escaper
+ */
+
+use Rollpix\GoogleOneTap\Block\OneTap;
+use Magento\Framework\Escaper;
+
+if (!$block->isCustomerLoggedIn() && $block->isEnable()) :
+    $clientId = $escaper->escapeHtml($block->getClientId());
+    $loginUri = $escaper->escapeUrl($block->getUrl('customer/account'));
+    $positionClass = $escaper->escapeHtml($block->getPosition());
+
+    $autoSign = $block->getAutoSign() ? 'data-auto_select="true"' : '';
+    $cancelOnTapOutside = (!$block->getClickDisable() && !$block->getAutoSign())
+        ? 'data-cancel_on_tap_outside="false"'
+        : '';
+    ?>
+    <!-- Google One Tap Container -->
+    <div id="g_id_onload"
+         data-client_id="<?= $clientId ?>"
+         data-context="signin"
+         data-callback="googleLoginEndpoint"
+         data-login_uri="<?= $loginUri ?>"
+         data-itp_support="true"
+        <?= $autoSign ?>
+        <?= $cancelOnTapOutside ?>>
+    </div>
+
+    <!-- Google One Tap Callback Script -->
+    <script>
+        function googleLoginEndpoint(googleUser) {
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", window.BASE_URL + "onetaplogin/checkout/response", true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            if (response.success) {
+                                require(['Magento_Customer/js/customer-data'], function(customerData) {
+                                    customerData.reload(['customer', 'cart'], true);
+                                });
+                                window.location.reload();
+                            } else {
+                                console.error('Google One Tap login failed:', response.message || 'Unknown error');
+                                // You could show a user notification here
+                            }
+                        } catch (e) {
+                            console.error('Invalid response from Google One Tap endpoint:', e);
+                        }
+                    } else {
+                        console.error('Google One Tap network error. Status:', xhr.status);
+                    }
+                }
+            };
+
+            const formData = new FormData();
+            formData.append("id_token", googleUser.credential);
+            xhr.send(formData);
+        }
+    </script>
+
+    <!-- Add Position Class to Google Picker Container -->
+    <script>
+        require(['jquery'], function ($) {
+            $(function () {
+                let attempts = 0;
+                const maxAttempts = 50; // 5 seconds maximum (50 * 100ms)
+
+                const interval = setInterval(function () {
+                    const container = $('#credential_picker_container');
+                    attempts++;
+
+                    if (container.length) {
+                        container.addClass("<?= $positionClass ?>");
+                        clearInterval(interval);
+                    } else if (attempts >= maxAttempts) {
+                        clearInterval(interval);
+                        console.warn('Google One Tap container not found after 5 seconds');
+                    }
+                }, 100);
+            });
+        });
+    </script>
+<?php endif; ?>
