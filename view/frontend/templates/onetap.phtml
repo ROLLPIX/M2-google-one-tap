@@ -58,9 +58,8 @@ if (!$block->isCustomerLoggedIn() && $block->isEnable()) :
                 }
             };
 
-            const formData = new FormData();
-            formData.append("id_token", googleUser.credential);
-            xhr.send(formData);
+            const params = "id_token=" + encodeURIComponent(googleUser.credential);
+            xhr.send(params);
         }
     </script>
 
