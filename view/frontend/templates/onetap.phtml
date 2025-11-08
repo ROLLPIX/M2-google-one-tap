@@ -10,6 +10,7 @@ use Magento\Framework\Escaper;
 if (!$block->isCustomerLoggedIn() && $block->isEnable()) :
     $clientId = $escaper->escapeHtml($block->getClientId());
     $loginUri = $escaper->escapeUrl($block->getUrl('customer/account'));
+    $callbackUrl = $escaper->escapeUrl($block->getUrl('onetaplogin/checkout/response'));
     $positionClass = $escaper->escapeHtml($block->getPosition());
 
     $autoSign = $block->getAutoSign() ? 'data-auto_select="true"' : '';
@@ -31,8 +32,9 @@ if (!$block->isCustomerLoggedIn() && $block->isEnable()) :
     <!-- Google One Tap Callback Script -->
     <script>
         function googleLoginEndpoint(googleUser) {
+            console.log('Google One Tap callback triggered', googleUser);
             const xhr = new XMLHttpRequest();
-            xhr.open("POST", window.BASE_URL + "onetaplogin/checkout/response", true);
+            xhr.open("POST", "<?= $callbackUrl ?>", true);
             xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
 
             xhr.onreadystatechange = function () {
@@ -59,6 +61,8 @@ if (!$block->isCustomerLoggedIn() && $block->isEnable()) :
             };
 
             const params = "id_token=" + encodeURIComponent(googleUser.credential);
+            console.log('Sending params:', params);
+            console.log('URL:', "<?= $callbackUrl ?>");
             xhr.send(params);
         }
     </script>

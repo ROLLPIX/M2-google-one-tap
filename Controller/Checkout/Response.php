@@ -55,6 +55,14 @@ class Response implements CsrfAwareActionInterface
         $websiteId = (int)$this->storeManager->getStore()->getWebsiteId();
 
         try {
+            // Debug logging - see what we're receiving
+            $this->logger->info('Google One Tap Request Debug', [
+                'all_params' => $this->request->getParams(),
+                'post_params' => $this->request->getPostValue(),
+                'content_type' => $this->request->getHeader('Content-Type'),
+                'method' => $this->request->getMethod()
+            ]);
+
             // Validate ID token
             $idToken = $this->request->getParam('id_token');
             if (!$idToken) {
