@@ -3,7 +3,7 @@
         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
     <system>
         <tab id="Rollpix" translate="label" sortOrder="10">
-            <label>Rollpix Extensions</label>
+            <label>Rollpix</label>
         </tab>
         <section id="googleonetap" translate="label" type="text" sortOrder="140" showInDefault="1"
                  showInWebsite="1" showInStore="0">

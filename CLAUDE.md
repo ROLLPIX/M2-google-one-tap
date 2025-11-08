@@ -127,7 +127,7 @@ Standard Magento 2 module structure:
 - `view/frontend/layout/` - Layout XML files
 - `view/frontend/templates/` - PHTML templates
 - `registration.php` - Module registration entry point
-- `i18n/` - Translation files (Spanish supported: es_ES, es_MX)
+- `i18n/` - Translation files (Spanish supported: es_ES, es_MX, es_AR)
 
 ## Translations
 
@@ -136,6 +136,7 @@ The module includes Spanish translations for all user-facing messages:
 **Available Languages:**
 - `i18n/es_ES.csv` - Spanish (Spain)
 - `i18n/es_MX.csv` - Spanish (Mexico)
+- `i18n/es_AR.csv` - Spanish (Argentina)
 
 **Translated Elements:**
 - Admin configuration labels and fields
