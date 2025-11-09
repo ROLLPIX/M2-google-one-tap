@@ -1,5 +1,7 @@
 "Missing ID token.","Falta el token de identificación."
+"Invalid or missing ID token.","Token de identificación inválido o faltante."
 "Invalid Google ID token.","Token de identificación de Google inválido."
+"Authentication token has expired. Please try again.","El token de autenticación ha expirado. Por favor, intente nuevamente."
 "Email not verified by Google.","Correo electrónico no verificado por Google."
 "Invalid or missing email address.","Dirección de correo electrónico inválida o faltante."
 "Google One Tap authentication failed","Falló la autenticación de Google One Tap"

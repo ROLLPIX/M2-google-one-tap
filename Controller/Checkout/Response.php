@@ -17,6 +17,8 @@ use Magento\Framework\Controller\Result\JsonFactory;
 use Magento\Customer\Api\CustomerRepositoryInterface;
 use Magento\Customer\Api\Data\CustomerInterfaceFactory;
 use Magento\Framework\Exception\{InputException, LocalizedException, NoSuchEntityException};
+use Magento\Framework\Math\Random;
+use Magento\Framework\Encryption\EncryptorInterface;
 use Psr\Log\LoggerInterface;
 
 class Response implements CsrfAwareActionInterface
@@ -32,6 +34,8 @@ class Response implements CsrfAwareActionInterface
      * @param CustomerRepositoryInterface $customerRepositoryInterface
      * @param JsonFactory $resultJsonFactory
      * @param LoggerInterface $logger
+     * @param Random $mathRandom
+     * @param EncryptorInterface $encryptor
      */
     public function __construct(
         private readonly Data $config,
@@ -42,7 +46,9 @@ class Response implements CsrfAwareActionInterface
         private readonly CustomerInterfaceFactory $customerInterfaceFactory,
         private readonly CustomerRepositoryInterface $customerRepositoryInterface,
         private readonly JsonFactory $resultJsonFactory,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly Random $mathRandom,
+        private readonly EncryptorInterface $encryptor
     ) {}
 
     /**
@@ -67,12 +73,14 @@ class Response implements CsrfAwareActionInterface
             $postData = $this->request->getPostValue();
             $idToken = $postData['id_token'] ?? null;
 
-            if (!$idToken) {
-                $this->logger->error('Missing ID token after extraction', [
+            // Security: Validate token exists and length (prevent DoS attacks with huge payloads)
+            if (!$idToken || strlen($idToken) > 2048) {
+                $this->logger->error('Missing or invalid ID token', [
+                    'token_length' => $idToken ? strlen($idToken) : 0,
                     'post_data' => $postData,
                     'get_param_result' => $this->request->getParam('id_token')
                 ]);
-                throw new InputException(__('Missing ID token.'));
+                throw new InputException(__('Invalid or missing ID token.'));
             }
 
             // Verify token with Google
@@ -89,6 +97,15 @@ class Response implements CsrfAwareActionInterface
                     'actual_aud' => $payload['aud'] ?? 'null'
                 ]);
                 throw new LocalizedException(__('Invalid Google ID token.'));
+            }
+
+            // Security: Explicitly validate token expiration (defense in depth)
+            if (isset($payload['exp']) && $payload['exp'] < time()) {
+                $this->logger->error('Google One Tap: Token has expired', [
+                    'exp' => $payload['exp'],
+                    'current_time' => time()
+                ]);
+                throw new LocalizedException(__('Authentication token has expired. Please try again.'));
             }
 
             $this->logger->info('Google One Tap: Token verified successfully', ['email' => $payload['email'] ?? 'unknown']);
@@ -129,18 +146,25 @@ class Response implements CsrfAwareActionInterface
                     'lastname' => $lastName
                 ]);
 
+                // Generate a secure random password for the new customer
+                // This allows the customer to use the "Change Password" functionality later
+                $randomPassword = $this->mathRandom->getRandomString(16);
+                $passwordHash = $this->encryptor->getHash($randomPassword, true);
+
                 // Create new customer
                 $newCustomer = $this->customerInterfaceFactory->create();
                 $newCustomer->setWebsiteId($websiteId);
                 $newCustomer->setEmail($email);
                 $newCustomer->setFirstname($firstName);
                 $newCustomer->setLastname($lastName);
-                $this->customerRepositoryInterface->save($newCustomer);
+                $this->customerRepositoryInterface->save($newCustomer, $passwordHash);
 
                 // Reload customer for session
                 $customer->loadByEmail($email);
 
-                $this->logger->info('Google One Tap: New customer created', ['customer_id' => $customer->getId()]);
+                $this->logger->info('Google One Tap: New customer created with random password', [
+                    'customer_id' => $customer->getId()
+                ]);
             } else {
                 $this->logger->info('Google One Tap: Existing customer found', ['customer_id' => $customer->getId()]);
             }
