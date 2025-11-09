@@ -79,7 +79,15 @@ class GoogleLinkedNotice extends Template
             return '';
         }
 
-        return (string)$customer->getData('google_onetap_email');
+        // Try to get google_onetap_email first (for newer linked accounts)
+        $googleEmail = $customer->getData('google_onetap_email');
+
+        // Fallback to customer email for older linked accounts (before v1.0.16)
+        if (empty($googleEmail)) {
+            $googleEmail = $customer->getEmail();
+        }
+
+        return (string)$googleEmail;
     }
 
     /**
@@ -96,10 +104,9 @@ class GoogleLinkedNotice extends Template
         }
 
         $linkedAt = $customer->getData('google_onetap_linked_at');
-        $googleEmail = $customer->getData('google_onetap_email');
 
-        // Must have both linked timestamp and Google email
-        return !empty($linkedAt) && !empty($googleEmail);
+        // Only check linked_at timestamp (google_onetap_email may not exist for older linked accounts)
+        return !empty($linkedAt);
     }
 
     /**
