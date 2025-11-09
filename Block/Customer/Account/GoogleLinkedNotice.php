@@ -83,6 +83,26 @@ class GoogleLinkedNotice extends Template
     }
 
     /**
+     * Check if customer account is linked with Google One Tap (created or linked)
+     *
+     * @return bool
+     */
+    public function isGoogleOneTapLinked(): bool
+    {
+        $customer = $this->customerSession->getCustomer();
+
+        if (!$customer || !$customer->getId()) {
+            return false;
+        }
+
+        $linkedAt = $customer->getData('google_onetap_linked_at');
+        $googleEmail = $customer->getData('google_onetap_email');
+
+        // Must have both linked timestamp and Google email
+        return !empty($linkedAt) && !empty($googleEmail);
+    }
+
+    /**
      * Check if customer is logged in
      *
      * @return bool

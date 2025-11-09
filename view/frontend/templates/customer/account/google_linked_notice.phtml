@@ -12,12 +12,13 @@ if (!$block->isCustomerLoggedIn()) {
     return;
 }
 
-// Only show for accounts created via Google One Tap
-if (!$block->isGoogleOneTapCreated()) {
+// Only show for accounts linked with Google One Tap (created or linked)
+if (!$block->isGoogleOneTapLinked()) {
     return;
 }
 
 $googleEmail = $escaper->escapeHtml($block->getGoogleEmail());
+$isCreatedWithGoogle = $block->isGoogleOneTapCreated();
 ?>
 
 <!-- Google One Tap Account Notice -->
@@ -27,21 +28,32 @@ $googleEmail = $escaper->escapeHtml($block->getGoogleEmail());
     </div>
 </div>
 
-<!-- Hide change password checkbox for Google One Tap created accounts -->
-<style>
-    .fieldset.password .field.choice.change-password {
-        display: none !important;
-    }
-</style>
+<?php if ($isCreatedWithGoogle): ?>
+    <!-- Hide change password checkbox for Google One Tap created accounts -->
+    <style>
+        /* Hide change password checkbox */
+        .field.choice.change-password {
+            display: none !important;
+        }
 
-<script>
-    require(['jquery'], function($) {
-        $(document).ready(function() {
-            // Hide the entire change password fieldset since account was created via Google
-            $('.fieldset.password').hide();
+        /* Hide the entire password fieldset when checkbox is hidden */
+        .fieldset.password {
+            display: none !important;
+        }
+    </style>
 
-            // Also hide any change email/password checkbox if it exists
-            $('.field.choice.change-email, .field.choice.change-password').hide();
+    <script>
+        require(['jquery'], function($) {
+            $(document).ready(function() {
+                // Double check: Hide the entire change password fieldset since account was created via Google
+                $('.fieldset.password').hide();
+
+                // Also hide any change email/password checkbox if it exists
+                $('.field.choice.change-password').hide();
+
+                // If there's a "Change Email and Password" section, hide it
+                $('fieldset.fieldset.password').hide();
+            });
         });
-    });
-</script>
+    </script>
+<?php endif; ?>
