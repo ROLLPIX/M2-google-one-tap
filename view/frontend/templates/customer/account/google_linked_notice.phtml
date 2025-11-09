@@ -29,15 +29,27 @@ $isCreatedWithGoogle = $block->isGoogleOneTapCreated();
 </div>
 
 <?php if ($isCreatedWithGoogle): ?>
-    <!-- Hide change password checkbox for Google One Tap created accounts -->
+    <!-- Hide change password checkbox and fieldset for Google One Tap created accounts -->
     <style>
-        /* Hide change password checkbox */
-        .field.choice.change-password {
+        /* Hide any field containing "change-password" in class or name */
+        .field.choice.change-password,
+        .field.change-password,
+        [name="change_password"],
+        input[type="checkbox"][value*="password"],
+        label[for*="change-password"],
+        label[for*="change_password"] {
             display: none !important;
         }
 
-        /* Hide the entire password fieldset when checkbox is hidden */
-        .fieldset.password {
+        /* Hide password fieldset */
+        .fieldset.password,
+        fieldset.password,
+        .form-edit-account .fieldset.password {
+            display: none !important;
+        }
+
+        /* Hide containing divs */
+        .box-information .field.choice:has(input[name="change_password"]) {
             display: none !important;
         }
     </style>
@@ -45,14 +57,44 @@ $isCreatedWithGoogle = $block->isGoogleOneTapCreated();
     <script>
         require(['jquery'], function($) {
             $(document).ready(function() {
-                // Double check: Hide the entire change password fieldset since account was created via Google
-                $('.fieldset.password').hide();
+                console.log('Google One Tap: Hiding password change options for Google-created account');
 
-                // Also hide any change email/password checkbox if it exists
-                $('.field.choice.change-password').hide();
+                // Method 1: Hide by checkbox value/name containing password
+                $('input[type="checkbox"]').each(function() {
+                    const $checkbox = $(this);
+                    const name = $checkbox.attr('name') || '';
+                    const id = $checkbox.attr('id') || '';
+                    const value = $checkbox.val() || '';
 
-                // If there's a "Change Email and Password" section, hide it
-                $('fieldset.fieldset.password').hide();
+                    if (name.toLowerCase().includes('password') ||
+                        id.toLowerCase().includes('password') ||
+                        value.toString().toLowerCase().includes('password')) {
+                        // Hide the checkbox and its parent field
+                        $checkbox.closest('.field').hide();
+                        console.log('Hid password checkbox:', name, id);
+                    }
+                });
+
+                // Method 2: Hide by label text containing "contraseña" or "password"
+                $('label').each(function() {
+                    const labelText = $(this).text().toLowerCase();
+                    if (labelText.includes('contraseña') || labelText.includes('password')) {
+                        $(this).closest('.field.choice').hide();
+                        console.log('Hid by label text:', $(this).text());
+                    }
+                });
+
+                // Method 3: Hide password fieldset
+                $('.fieldset.password, fieldset.password').hide();
+
+                // Method 4: Target by common Magento structure
+                $('.box-information .field.choice').each(function() {
+                    const fieldHtml = $(this).html().toLowerCase();
+                    if (fieldHtml.includes('password') || fieldHtml.includes('contraseña')) {
+                        $(this).hide();
+                        console.log('Hid password field by HTML content');
+                    }
+                });
             });
         });
     </script>
