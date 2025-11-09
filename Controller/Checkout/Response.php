@@ -77,12 +77,21 @@ class Response implements CsrfAwareActionInterface
 
             // Verify token with Google
             $googleOauthClientId = $this->config->getClientId($websiteId);
+            $this->logger->info('Google One Tap: Verifying token', ['client_id' => $googleOauthClientId]);
+
             $client = new Google_Client(['client_id' => $googleOauthClientId]);
             $payload = $client->verifyIdToken($idToken);
 
             if (!$payload || ($payload['aud'] ?? null) !== $googleOauthClientId) {
+                $this->logger->error('Google One Tap: Token verification failed', [
+                    'payload' => $payload,
+                    'expected_aud' => $googleOauthClientId,
+                    'actual_aud' => $payload['aud'] ?? 'null'
+                ]);
                 throw new LocalizedException(__('Invalid Google ID token.'));
             }
+
+            $this->logger->info('Google One Tap: Token verified successfully', ['email' => $payload['email'] ?? 'unknown']);
 
             // Validate email is verified
             if (!($payload['email_verified'] ?? false)) {
@@ -107,11 +116,19 @@ class Response implements CsrfAwareActionInterface
             }
 
             // Load existing customer or create new one
+            $this->logger->info('Google One Tap: Looking for customer', ['email' => $email, 'website_id' => $websiteId]);
+
             $customer = $this->customerFactory->create();
             $customer->setWebsiteId($websiteId);
             $customer->loadByEmail($email);
 
             if (!$customer->getId()) {
+                $this->logger->info('Google One Tap: Customer not found, creating new', [
+                    'email' => $email,
+                    'firstname' => $firstName,
+                    'lastname' => $lastName
+                ]);
+
                 // Create new customer
                 $newCustomer = $this->customerInterfaceFactory->create();
                 $newCustomer->setWebsiteId($websiteId);
@@ -122,10 +139,16 @@ class Response implements CsrfAwareActionInterface
 
                 // Reload customer for session
                 $customer->loadByEmail($email);
+
+                $this->logger->info('Google One Tap: New customer created', ['customer_id' => $customer->getId()]);
+            } else {
+                $this->logger->info('Google One Tap: Existing customer found', ['customer_id' => $customer->getId()]);
             }
 
             // Log in customer
+            $this->logger->info('Google One Tap: Logging in customer', ['customer_id' => $customer->getId()]);
             $this->customerSession->setCustomerAsLoggedIn($customer);
+            $this->logger->info('Google One Tap: Customer logged in successfully');
 
             return $result->setData(['success' => true]);
 
