@@ -2,7 +2,9 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
     <system>
-        <!-- Tab "Rollpix" is defined in another Rollpix module, we just reference it -->
+        <tab id="Rollpix" translate="label" sortOrder="10">
+            <label>Rollpix</label>
+        </tab>
         <section id="googleonetap" translate="label" type="text" sortOrder="140" showInDefault="1"
                  showInWebsite="1" showInStore="0">
             <label>One Tap Login</label>
