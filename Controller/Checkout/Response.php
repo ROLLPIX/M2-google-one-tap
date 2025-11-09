@@ -148,7 +148,13 @@ class Response implements CsrfAwareActionInterface
             // Log in customer
             $this->logger->info('Google One Tap: Logging in customer', ['customer_id' => $customer->getId()]);
             $this->customerSession->setCustomerAsLoggedIn($customer);
-            $this->logger->info('Google One Tap: Customer logged in successfully');
+
+            // Regenerate session ID for security and persistence
+            $this->customerSession->regenerateId();
+
+            $this->logger->info('Google One Tap: Customer logged in successfully', [
+                'session_id' => $this->customerSession->getSessionId()
+            ]);
 
             return $result->setData(['success' => true]);
 

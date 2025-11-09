@@ -43,13 +43,20 @@ if (!$block->isCustomerLoggedIn() && $block->isEnable()) :
                         try {
                             const response = JSON.parse(xhr.responseText);
                             if (response.success) {
+                                console.log('Google One Tap: Login successful, reloading customer data...');
                                 require(['Magento_Customer/js/customer-data'], function(customerData) {
+                                    // Invalidate customer and cart sections to force reload
+                                    customerData.invalidate(['customer', 'cart']);
                                     customerData.reload(['customer', 'cart'], true);
+
+                                    // Give session time to persist, then reload page
+                                    setTimeout(function() {
+                                        console.log('Google One Tap: Reloading page...');
+                                        window.location.reload();
+                                    }, 500);
                                 });
-                                window.location.reload();
                             } else {
                                 console.error('Google One Tap login failed:', response.message || 'Unknown error');
-                                // You could show a user notification here
                             }
                         } catch (e) {
                             console.error('Invalid response from Google One Tap endpoint:', e);
