@@ -206,7 +206,9 @@ class Response implements CsrfAwareActionInterface
                 $newCustomer->setLastname($lastName);
                 $this->customerRepositoryInterface->save($newCustomer, $passwordHash);
 
-                // Reload customer for session
+                // Reload customer for session - recreate with websiteId to avoid "website ID not specified" error
+                $customer = $this->customerFactory->create();
+                $customer->setWebsiteId($websiteId);
                 $customer->loadByEmail($email);
 
                 // Mark as linked via Google One Tap from creation and save Google email
