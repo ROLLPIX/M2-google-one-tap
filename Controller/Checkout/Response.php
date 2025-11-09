@@ -209,8 +209,9 @@ class Response implements CsrfAwareActionInterface
                 // Reload customer for session
                 $customer->loadByEmail($email);
 
-                // Mark as linked via Google One Tap from creation
+                // Mark as linked via Google One Tap from creation and save Google email
                 $customer->setData('google_onetap_linked_at', date('Y-m-d H:i:s'));
+                $customer->setData('google_onetap_email', $email);
                 $customer->save();
 
                 if ($this->config->isDebugLoggingEnabled()) {
@@ -224,8 +225,9 @@ class Response implements CsrfAwareActionInterface
                 $isAccountLinking = empty($linkedAt);
 
                 if ($isAccountLinking) {
-                    // First time using Google One Tap - link the account
+                    // First time using Google One Tap - link the account and save Google email
                     $customer->setData('google_onetap_linked_at', date('Y-m-d H:i:s'));
+                    $customer->setData('google_onetap_email', $email);
                     $customer->save();
 
                     $this->logger->info('Google One Tap: Account linked successfully', [

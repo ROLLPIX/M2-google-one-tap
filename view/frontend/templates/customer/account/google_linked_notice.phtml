@@ -1,0 +1,47 @@
+<?php
+/**
+ * @var \Rollpix\GoogleOneTap\Block\Customer\Account\GoogleLinkedNotice $block
+ * @var \Magento\Framework\Escaper $escaper
+ */
+
+use Magento\Framework\Escaper;
+use Rollpix\GoogleOneTap\Block\Customer\Account\GoogleLinkedNotice;
+
+// Only show for logged in customers
+if (!$block->isCustomerLoggedIn()) {
+    return;
+}
+
+// Only show for accounts created via Google One Tap
+if (!$block->isGoogleOneTapCreated()) {
+    return;
+}
+
+$googleEmail = $escaper->escapeHtml($block->getGoogleEmail());
+?>
+
+<!-- Google One Tap Account Notice -->
+<div class="message info google-onetap-notice" style="margin-bottom: 20px;">
+    <div>
+        <?= $escaper->escapeHtml(__('Your Librería Oxford account is linked with your Google account %1', $googleEmail)) ?>
+    </div>
+</div>
+
+<!-- Hide change password checkbox for Google One Tap created accounts -->
+<style>
+    .fieldset.password .field.choice.change-password {
+        display: none !important;
+    }
+</style>
+
+<script>
+    require(['jquery'], function($) {
+        $(document).ready(function() {
+            // Hide the entire change password fieldset since account was created via Google
+            $('.fieldset.password').hide();
+
+            // Also hide any change email/password checkbox if it exists
+            $('.field.choice.change-email, .field.choice.change-password').hide();
+        });
+    });
+</script>
