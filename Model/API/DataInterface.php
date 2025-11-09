@@ -11,7 +11,8 @@ interface DataInterface
     public const XML_POSITION = 'googleonetap/general/position';
     public const XML_STATUS = 'googleonetap/module_status/status';
 
-    // Rate Limiting
+    // Security & Logging
+    public const XML_DEBUG_LOGGING = 'googleonetap/security/debug_logging';
     public const XML_RATE_LIMIT_ENABLED = 'googleonetap/security/rate_limit_enabled';
     public const XML_RATE_LIMIT_MAX_ATTEMPTS = 'googleonetap/security/max_attempts';
     public const XML_RATE_LIMIT_TIME_WINDOW = 'googleonetap/security/time_window';

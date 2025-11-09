@@ -2,9 +2,7 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
     <system>
-        <tab id="Rollpix" translate="label" sortOrder="10">
-            <label>Rollpix</label>
-        </tab>
+        <!-- Tab "Rollpix" is defined in another Rollpix module, we just reference it -->
         <section id="googleonetap" translate="label" type="text" sortOrder="140" showInDefault="1"
                  showInWebsite="1" showInStore="0">
             <label>One Tap Login</label>
@@ -48,6 +46,12 @@
             <group id="security" translate="label" type="text" sortOrder="20" showInDefault="1"
                    showInWebsite="1" showInStore="0">
                 <label>Security Settings</label>
+                <field id="debug_logging" translate="label comment" type="select" sortOrder="5"
+                       showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Enable Debug Logging</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[<strong>Warning:</strong> Debug logging exposes sensitive data (tokens, emails, IPs). Only enable for troubleshooting, never in production.]]></comment>
+                </field>
                 <field id="rate_limit_enabled" translate="label comment" type="select" sortOrder="10"
                        showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Enable Rate Limiting</label>

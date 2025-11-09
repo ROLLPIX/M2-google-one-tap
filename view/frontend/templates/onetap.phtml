@@ -31,6 +31,22 @@ if (!$block->isCustomerLoggedIn() && $block->isEnable()) :
 
     <!-- Google One Tap Callback Script -->
     <script>
+        /**
+         * Display error message to user using Magento's message system
+         */
+        function showErrorMessage(message) {
+            require(['Magento_Ui/js/model/messageList', 'jquery'], function(messageList, $) {
+                messageList.addErrorMessage({
+                    message: message
+                });
+
+                // Scroll to messages
+                $('html, body').animate({
+                    scrollTop: $('.page.messages').offset()?.top || 0
+                }, 500);
+            });
+        }
+
         function googleLoginEndpoint(googleUser) {
             console.log('Google One Tap callback triggered', googleUser);
             const xhr = new XMLHttpRequest();
@@ -44,25 +60,50 @@ if (!$block->isCustomerLoggedIn() && $block->isEnable()) :
                             const response = JSON.parse(xhr.responseText);
                             if (response.success) {
                                 console.log('Google One Tap: Login successful, reloading customer data...');
-                                require(['Magento_Customer/js/customer-data'], function(customerData) {
-                                    // Invalidate customer and cart sections to force reload
+                                require(['Magento_Customer/js/customer-data', 'jquery'], function(customerData, $) {
+                                    let customerDataLoaded = false;
+                                    let reloadTimeout;
+
+                                    // Listen for customer data reload
+                                    const customerDataListener = function() {
+                                        const customer = customerData.get('customer')();
+                                        if (customer && customer.firstname) {
+                                            customerDataLoaded = true;
+                                            console.log('Google One Tap: Customer data confirmed loaded');
+                                            clearTimeout(reloadTimeout);
+                                            $(document).off('customer-data-reload', customerDataListener);
+                                            window.location.reload();
+                                        }
+                                    };
+
+                                    // Subscribe to customer data changes
+                                    $(document).on('customer-data-reload', customerDataListener);
+                                    customerData.get('customer').subscribe(customerDataListener);
+
+                                    // Invalidate and reload customer and cart sections
                                     customerData.invalidate(['customer', 'cart']);
                                     customerData.reload(['customer', 'cart'], true);
 
-                                    // Give session time to persist, then reload page
-                                    setTimeout(function() {
-                                        console.log('Google One Tap: Reloading page...');
-                                        window.location.reload();
-                                    }, 500);
+                                    // Fallback: reload after 1 second if customer data hasn't loaded
+                                    reloadTimeout = setTimeout(function() {
+                                        if (!customerDataLoaded) {
+                                            console.log('Google One Tap: Fallback timeout - reloading page...');
+                                            $(document).off('customer-data-reload', customerDataListener);
+                                            window.location.reload();
+                                        }
+                                    }, 1000);
                                 });
                             } else {
                                 console.error('Google One Tap login failed:', response.message || 'Unknown error');
+                                showErrorMessage(response.message || '<?= $escaper->escapeJs(__('Authentication failed. Please try again.')) ?>');
                             }
                         } catch (e) {
                             console.error('Invalid response from Google One Tap endpoint:', e);
+                            showErrorMessage('<?= $escaper->escapeJs(__('An unexpected error occurred. Please try again.')) ?>');
                         }
                     } else {
                         console.error('Google One Tap network error. Status:', xhr.status);
+                        showErrorMessage('<?= $escaper->escapeJs(__('Network error. Please check your connection and try again.')) ?>');
                     }
                 }
             };

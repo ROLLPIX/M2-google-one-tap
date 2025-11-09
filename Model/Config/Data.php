@@ -85,6 +85,16 @@ class Data implements API
     }
 
     /**
+     * Check if debug logging is enabled
+     *
+     * @return bool
+     */
+    public function isDebugLoggingEnabled(): bool
+    {
+        return $this->scopeConfig->isSetFlag(API::XML_DEBUG_LOGGING, ScopeInterface::SCOPE_WEBSITE);
+    }
+
+    /**
      * Check if rate limiting is enabled
      *
      * @return bool

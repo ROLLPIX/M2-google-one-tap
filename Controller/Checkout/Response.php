@@ -74,8 +74,9 @@ class Response implements CsrfAwareActionInterface
                 $timeWindow = $this->config->getRateLimitTimeWindow();
 
                 if ($this->rateLimiter->isRateLimitExceeded($ipAddress, $maxAttempts, $timeWindow)) {
+                    // Log without exposing full IP (privacy)
                     $this->logger->warning('Google One Tap: Rate limit exceeded', [
-                        'ip' => $ipAddress,
+                        'ip_hash' => substr(hash('sha256', $ipAddress), 0, 16),
                         'max_attempts' => $maxAttempts,
                         'time_window' => $timeWindow
                     ]);
@@ -90,13 +91,15 @@ class Response implements CsrfAwareActionInterface
                 $this->rateLimiter->recordAttempt($ipAddress, $timeWindow);
             }
 
-            // Debug logging - see what we're receiving
-            $this->logger->info('Google One Tap Request Debug', [
-                'all_params' => $this->request->getParams(),
-                'post_params' => $this->request->getPostValue(),
-                'content_type' => $this->request->getHeader('Content-Type'),
-                'method' => $this->request->getMethod()
-            ]);
+            // Debug logging - only if enabled (contains sensitive data)
+            if ($this->config->isDebugLoggingEnabled()) {
+                $this->logger->info('Google One Tap Request Debug', [
+                    'all_params' => $this->request->getParams(),
+                    'post_params' => $this->request->getPostValue(),
+                    'content_type' => $this->request->getHeader('Content-Type'),
+                    'method' => $this->request->getMethod()
+                ]);
+            }
 
             // Validate ID token - use getPostValue() directly since getParam() may not work with POST body
             $postData = $this->request->getPostValue();
@@ -104,40 +107,51 @@ class Response implements CsrfAwareActionInterface
 
             // Security: Validate token exists and length (prevent DoS attacks with huge payloads)
             if (!$idToken || strlen($idToken) > 2048) {
-                $this->logger->error('Missing or invalid ID token', [
-                    'token_length' => $idToken ? strlen($idToken) : 0,
-                    'post_data' => $postData,
-                    'get_param_result' => $this->request->getParam('id_token')
-                ]);
+                if ($this->config->isDebugLoggingEnabled()) {
+                    $this->logger->error('Missing or invalid ID token', [
+                        'token_length' => $idToken ? strlen($idToken) : 0,
+                        'post_data' => $postData,
+                        'get_param_result' => $this->request->getParam('id_token')
+                    ]);
+                }
                 throw new InputException(__('Invalid or missing ID token.'));
             }
 
             // Verify token with Google
             $googleOauthClientId = $this->config->getClientId($websiteId);
-            $this->logger->info('Google One Tap: Verifying token', ['client_id' => $googleOauthClientId]);
+
+            if ($this->config->isDebugLoggingEnabled()) {
+                $this->logger->info('Google One Tap: Verifying token', ['client_id' => $googleOauthClientId]);
+            }
 
             $client = new Google_Client(['client_id' => $googleOauthClientId]);
             $payload = $client->verifyIdToken($idToken);
 
             if (!$payload || ($payload['aud'] ?? null) !== $googleOauthClientId) {
-                $this->logger->error('Google One Tap: Token verification failed', [
-                    'payload' => $payload,
-                    'expected_aud' => $googleOauthClientId,
-                    'actual_aud' => $payload['aud'] ?? 'null'
-                ]);
+                if ($this->config->isDebugLoggingEnabled()) {
+                    $this->logger->error('Google One Tap: Token verification failed', [
+                        'payload' => $payload,
+                        'expected_aud' => $googleOauthClientId,
+                        'actual_aud' => $payload['aud'] ?? 'null'
+                    ]);
+                }
                 throw new LocalizedException(__('Invalid Google ID token.'));
             }
 
             // Security: Explicitly validate token expiration (defense in depth)
             if (isset($payload['exp']) && $payload['exp'] < time()) {
-                $this->logger->error('Google One Tap: Token has expired', [
-                    'exp' => $payload['exp'],
-                    'current_time' => time()
-                ]);
+                if ($this->config->isDebugLoggingEnabled()) {
+                    $this->logger->error('Google One Tap: Token has expired', [
+                        'exp' => $payload['exp'],
+                        'current_time' => time()
+                    ]);
+                }
                 throw new LocalizedException(__('Authentication token has expired. Please try again.'));
             }
 
-            $this->logger->info('Google One Tap: Token verified successfully', ['email' => $payload['email'] ?? 'unknown']);
+            if ($this->config->isDebugLoggingEnabled()) {
+                $this->logger->info('Google One Tap: Token verified successfully', ['email' => $payload['email'] ?? 'unknown']);
+            }
 
             // Validate email is verified
             if (!($payload['email_verified'] ?? false)) {
@@ -162,18 +176,22 @@ class Response implements CsrfAwareActionInterface
             }
 
             // Load existing customer or create new one
-            $this->logger->info('Google One Tap: Looking for customer', ['email' => $email, 'website_id' => $websiteId]);
+            if ($this->config->isDebugLoggingEnabled()) {
+                $this->logger->info('Google One Tap: Looking for customer', ['email' => $email, 'website_id' => $websiteId]);
+            }
 
             $customer = $this->customerFactory->create();
             $customer->setWebsiteId($websiteId);
             $customer->loadByEmail($email);
 
             if (!$customer->getId()) {
-                $this->logger->info('Google One Tap: Customer not found, creating new', [
-                    'email' => $email,
-                    'firstname' => $firstName,
-                    'lastname' => $lastName
-                ]);
+                if ($this->config->isDebugLoggingEnabled()) {
+                    $this->logger->info('Google One Tap: Customer not found, creating new', [
+                        'email' => $email,
+                        'firstname' => $firstName,
+                        'lastname' => $lastName
+                    ]);
+                }
 
                 // Generate a secure random password for the new customer
                 // This allows the customer to use the "Change Password" functionality later
@@ -191,23 +209,54 @@ class Response implements CsrfAwareActionInterface
                 // Reload customer for session
                 $customer->loadByEmail($email);
 
-                $this->logger->info('Google One Tap: New customer created with random password', [
-                    'customer_id' => $customer->getId()
-                ]);
+                // Mark as linked via Google One Tap from creation
+                $customer->setData('google_onetap_linked_at', date('Y-m-d H:i:s'));
+                $customer->save();
+
+                if ($this->config->isDebugLoggingEnabled()) {
+                    $this->logger->info('Google One Tap: New customer created with random password', [
+                        'customer_id' => $customer->getId()
+                    ]);
+                }
             } else {
-                $this->logger->info('Google One Tap: Existing customer found', ['customer_id' => $customer->getId()]);
+                // Check if this is the first time linking Google One Tap to existing account
+                $linkedAt = $customer->getData('google_onetap_linked_at');
+                $isAccountLinking = empty($linkedAt);
+
+                if ($isAccountLinking) {
+                    // First time using Google One Tap - link the account
+                    $customer->setData('google_onetap_linked_at', date('Y-m-d H:i:s'));
+                    $customer->save();
+
+                    $this->logger->info('Google One Tap: Account linked successfully', [
+                        'customer_id' => $customer->getId(),
+                        'email' => $email,
+                        'action' => 'account_linking'
+                    ]);
+                } else {
+                    if ($this->config->isDebugLoggingEnabled()) {
+                        $this->logger->info('Google One Tap: Existing customer found', [
+                            'customer_id' => $customer->getId(),
+                            'linked_since' => $linkedAt
+                        ]);
+                    }
+                }
             }
 
             // Log in customer
-            $this->logger->info('Google One Tap: Logging in customer', ['customer_id' => $customer->getId()]);
+            if ($this->config->isDebugLoggingEnabled()) {
+                $this->logger->info('Google One Tap: Logging in customer', ['customer_id' => $customer->getId()]);
+            }
             $this->customerSession->setCustomerAsLoggedIn($customer);
 
             // Regenerate session ID for security and persistence
             $this->customerSession->regenerateId();
 
-            $this->logger->info('Google One Tap: Customer logged in successfully', [
-                'session_id' => $this->customerSession->getSessionId()
-            ]);
+            if ($this->config->isDebugLoggingEnabled()) {
+                $this->logger->info('Google One Tap: Customer logged in successfully', [
+                    'session_id' => $this->customerSession->getSessionId()
+                ]);
+            }
 
             return $result->setData(['success' => true]);
 
