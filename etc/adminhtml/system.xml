@@ -2,13 +2,13 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
     <system>
-        <tab id="Rollpix" translate="label" sortOrder="10">
+        <tab id="rollpix" translate="label" sortOrder="10">
             <label>Rollpix</label>
         </tab>
         <section id="googleonetap" translate="label" type="text" sortOrder="140" showInDefault="1"
                  showInWebsite="1" showInStore="0">
             <label>One Tap Login</label>
-            <tab>Rollpix</tab>
+            <tab>rollpix</tab>
             <resource>Rollpix_GoogleOneTap::GoogleOneTapConfig</resource>
             <group id="module_status" translate="label" type="text" sortOrder="1" showInDefault="1"
                    showInWebsite="1" showInStore="0">
