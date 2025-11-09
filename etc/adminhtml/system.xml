@@ -45,6 +45,34 @@
                     <comment>Select an option from the dropdown.</comment>
                 </field>
             </group>
+            <group id="security" translate="label" type="text" sortOrder="20" showInDefault="1"
+                   showInWebsite="1" showInStore="0">
+                <label>Security Settings</label>
+                <field id="rate_limit_enabled" translate="label comment" type="select" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Enable Rate Limiting</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Protect against brute force attacks by limiting authentication attempts per IP address.</comment>
+                </field>
+                <field id="max_attempts" translate="label comment" type="text" sortOrder="20"
+                       showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Maximum Attempts</label>
+                    <validate>validate-digits validate-greater-than-zero</validate>
+                    <comment>Maximum number of authentication attempts allowed within the time window. Default: 10</comment>
+                    <depends>
+                        <field id="rate_limit_enabled">1</field>
+                    </depends>
+                </field>
+                <field id="time_window" translate="label comment" type="text" sortOrder="30"
+                       showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Time Window (seconds)</label>
+                    <validate>validate-digits validate-greater-than-zero</validate>
+                    <comment>Time window in seconds for counting attempts. Default: 60 (1 minute)</comment>
+                    <depends>
+                        <field id="rate_limit_enabled">1</field>
+                    </depends>
+                </field>
+            </group>
         </section>
     </system>
 </config>

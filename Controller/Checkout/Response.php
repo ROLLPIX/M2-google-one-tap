@@ -19,6 +19,8 @@ use Magento\Customer\Api\Data\CustomerInterfaceFactory;
 use Magento\Framework\Exception\{InputException, LocalizedException, NoSuchEntityException};
 use Magento\Framework\Math\Random;
 use Magento\Framework\Encryption\EncryptorInterface;
+use Magento\Framework\HTTP\PhpEnvironment\RemoteAddress;
+use Rollpix\GoogleOneTap\Model\RateLimiter;
 use Psr\Log\LoggerInterface;
 
 class Response implements CsrfAwareActionInterface
@@ -36,6 +38,8 @@ class Response implements CsrfAwareActionInterface
      * @param LoggerInterface $logger
      * @param Random $mathRandom
      * @param EncryptorInterface $encryptor
+     * @param RemoteAddress $remoteAddress
+     * @param RateLimiter $rateLimiter
      */
     public function __construct(
         private readonly Data $config,
@@ -48,7 +52,9 @@ class Response implements CsrfAwareActionInterface
         private readonly JsonFactory $resultJsonFactory,
         private readonly LoggerInterface $logger,
         private readonly Random $mathRandom,
-        private readonly EncryptorInterface $encryptor
+        private readonly EncryptorInterface $encryptor,
+        private readonly RemoteAddress $remoteAddress,
+        private readonly RateLimiter $rateLimiter
     ) {}
 
     /**
@@ -61,6 +67,29 @@ class Response implements CsrfAwareActionInterface
         $websiteId = (int)$this->storeManager->getStore()->getWebsiteId();
 
         try {
+            // Security: Rate limiting to prevent brute force attacks
+            if ($this->config->isRateLimitEnabled()) {
+                $ipAddress = $this->remoteAddress->getRemoteAddress();
+                $maxAttempts = $this->config->getRateLimitMaxAttempts();
+                $timeWindow = $this->config->getRateLimitTimeWindow();
+
+                if ($this->rateLimiter->isRateLimitExceeded($ipAddress, $maxAttempts, $timeWindow)) {
+                    $this->logger->warning('Google One Tap: Rate limit exceeded', [
+                        'ip' => $ipAddress,
+                        'max_attempts' => $maxAttempts,
+                        'time_window' => $timeWindow
+                    ]);
+
+                    return $result->setData([
+                        'success' => false,
+                        'message' => __('Too many authentication attempts. Please try again later.')
+                    ]);
+                }
+
+                // Record this attempt
+                $this->rateLimiter->recordAttempt($ipAddress, $timeWindow);
+            }
+
             // Debug logging - see what we're receiving
             $this->logger->info('Google One Tap Request Debug', [
                 'all_params' => $this->request->getParams(),

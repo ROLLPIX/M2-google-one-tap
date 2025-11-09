@@ -83,4 +83,40 @@ class Data implements API
     {
         return $this->scopeConfig->isSetFlag(API::XML_STATUS, ScopeInterface::SCOPE_WEBSITE, $websiteId);
     }
+
+    /**
+     * Check if rate limiting is enabled
+     *
+     * @return bool
+     */
+    public function isRateLimitEnabled(): bool
+    {
+        return $this->scopeConfig->isSetFlag(API::XML_RATE_LIMIT_ENABLED, ScopeInterface::SCOPE_WEBSITE);
+    }
+
+    /**
+     * Get maximum allowed attempts for rate limiting
+     *
+     * @return int
+     */
+    public function getRateLimitMaxAttempts(): int
+    {
+        return (int)($this->scopeConfig->getValue(
+            API::XML_RATE_LIMIT_MAX_ATTEMPTS,
+            ScopeInterface::SCOPE_WEBSITE
+        ) ?: 10);
+    }
+
+    /**
+     * Get time window for rate limiting (in seconds)
+     *
+     * @return int
+     */
+    public function getRateLimitTimeWindow(): int
+    {
+        return (int)($this->scopeConfig->getValue(
+            API::XML_RATE_LIMIT_TIME_WINDOW,
+            ScopeInterface::SCOPE_WEBSITE
+        ) ?: 60);
+    }
 }
