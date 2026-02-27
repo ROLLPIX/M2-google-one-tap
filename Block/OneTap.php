@@ -81,6 +81,46 @@ class OneTap extends Template
     }
 
     /**
+     * Get One Tap prompt context
+     *
+     * @return string
+     */
+    public function getContext(): string
+    {
+        return $this->config->getContext();
+    }
+
+    /**
+     * Get prompt parent element CSS selector
+     *
+     * @return string
+     */
+    public function getPromptParentId(): string
+    {
+        return $this->config->getPromptParentId();
+    }
+
+    /**
+     * Check if ITP support is enabled
+     *
+     * @return bool
+     */
+    public function isItpSupport(): bool
+    {
+        return $this->config->isItpSupport();
+    }
+
+    /**
+     * Check if close callback message is enabled
+     *
+     * @return bool
+     */
+    public function isCloseCallbackEnabled(): bool
+    {
+        return $this->config->isCloseCallbackEnabled();
+    }
+
+    /**
      * Prepare config
      *
      * @return bool

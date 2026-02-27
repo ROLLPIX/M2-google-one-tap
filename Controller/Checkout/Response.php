@@ -10,17 +10,13 @@ use Google\Client as Google_Client;
 use Magento\Customer\Model\Session;
 use Magento\Framework\App\CsrfAwareActionInterface;
 use Magento\Framework\App\RequestInterface;
-use Magento\Customer\Model\CustomerFactory;
 use Magento\Store\Model\StoreManagerInterface;
 use Magento\Framework\Controller\ResultInterface;
 use Magento\Framework\Controller\Result\JsonFactory;
-use Magento\Customer\Api\CustomerRepositoryInterface;
-use Magento\Customer\Api\Data\CustomerInterfaceFactory;
 use Magento\Framework\Exception\{InputException, LocalizedException, NoSuchEntityException};
-use Magento\Framework\Math\Random;
-use Magento\Framework\Encryption\EncryptorInterface;
 use Magento\Framework\HTTP\PhpEnvironment\RemoteAddress;
 use Rollpix\GoogleOneTap\Model\RateLimiter;
+use Rollpix\GoogleOneTap\Model\SocialLoginService;
 use Psr\Log\LoggerInterface;
 
 class Response implements CsrfAwareActionInterface
@@ -29,32 +25,24 @@ class Response implements CsrfAwareActionInterface
     /**
      * @param Data $config
      * @param RequestInterface $request
-     * @param CustomerFactory $customerFactory
      * @param Session $customerSession
      * @param StoreManagerInterface $storeManager
-     * @param CustomerInterfaceFactory $customerInterfaceFactory
-     * @param CustomerRepositoryInterface $customerRepositoryInterface
      * @param JsonFactory $resultJsonFactory
      * @param LoggerInterface $logger
-     * @param Random $mathRandom
-     * @param EncryptorInterface $encryptor
      * @param RemoteAddress $remoteAddress
      * @param RateLimiter $rateLimiter
+     * @param SocialLoginService $socialLoginService
      */
     public function __construct(
         private readonly Data $config,
         private readonly RequestInterface $request,
-        private readonly CustomerFactory $customerFactory,
         private readonly Session $customerSession,
         private readonly StoreManagerInterface $storeManager,
-        private readonly CustomerInterfaceFactory $customerInterfaceFactory,
-        private readonly CustomerRepositoryInterface $customerRepositoryInterface,
         private readonly JsonFactory $resultJsonFactory,
         private readonly LoggerInterface $logger,
-        private readonly Random $mathRandom,
-        private readonly EncryptorInterface $encryptor,
         private readonly RemoteAddress $remoteAddress,
-        private readonly RateLimiter $rateLimiter
+        private readonly RateLimiter $rateLimiter,
+        private readonly SocialLoginService $socialLoginService
     ) {}
 
     /**
@@ -180,87 +168,16 @@ class Response implements CsrfAwareActionInterface
                 $this->logger->info('Google One Tap: Looking for customer', ['email' => $email, 'website_id' => $websiteId]);
             }
 
-            $customer = $this->customerFactory->create();
-            $customer->setWebsiteId($websiteId);
-            $customer->loadByEmail($email);
-
-            if (!$customer->getId()) {
-                if ($this->config->isDebugLoggingEnabled()) {
-                    $this->logger->info('Google One Tap: Customer not found, creating new', [
-                        'email' => $email,
-                        'firstname' => $firstName,
-                        'lastname' => $lastName
-                    ]);
-                }
-
-                // Generate a secure random password for the new customer
-                // This allows the customer to use the "Change Password" functionality later
-                $randomPassword = $this->mathRandom->getRandomString(16);
-                $passwordHash = $this->encryptor->getHash($randomPassword, true);
-
-                // Create new customer
-                $newCustomer = $this->customerInterfaceFactory->create();
-                $newCustomer->setWebsiteId($websiteId);
-                $newCustomer->setEmail($email);
-                $newCustomer->setFirstname($firstName);
-                $newCustomer->setLastname($lastName);
-                $this->customerRepositoryInterface->save($newCustomer, $passwordHash);
-
-                // Reload customer for session - recreate with websiteId to avoid "website ID not specified" error
-                $customer = $this->customerFactory->create();
-                $customer->setWebsiteId($websiteId);
-                $customer->loadByEmail($email);
-
-                // Mark as linked via Google One Tap from creation and save Google email
-                $customer->setData('google_onetap_linked_at', date('Y-m-d H:i:s'));
-                $customer->setData('google_onetap_email', $email);
-                $customer->save();
-
-                if ($this->config->isDebugLoggingEnabled()) {
-                    $this->logger->info('Google One Tap: New customer created with random password', [
-                        'customer_id' => $customer->getId()
-                    ]);
-                }
-            } else {
-                // Check if this is the first time linking Google One Tap to existing account
-                $linkedAt = $customer->getData('google_onetap_linked_at');
-                $isAccountLinking = empty($linkedAt);
-
-                if ($isAccountLinking) {
-                    // First time using Google One Tap - link the account and save Google email
-                    $customer->setData('google_onetap_linked_at', date('Y-m-d H:i:s'));
-                    $customer->setData('google_onetap_email', $email);
-                    $customer->save();
-
-                    $this->logger->info('Google One Tap: Account linked successfully', [
-                        'customer_id' => $customer->getId(),
-                        'email' => $email,
-                        'action' => 'account_linking'
-                    ]);
-                } else {
-                    if ($this->config->isDebugLoggingEnabled()) {
-                        $this->logger->info('Google One Tap: Existing customer found', [
-                            'customer_id' => $customer->getId(),
-                            'linked_since' => $linkedAt
-                        ]);
-                    }
-                }
-            }
+            $customer = $this->socialLoginService->findOrCreateCustomer(
+                $email,
+                $firstName,
+                $lastName,
+                $websiteId,
+                'google_onetap'
+            );
 
             // Log in customer
-            if ($this->config->isDebugLoggingEnabled()) {
-                $this->logger->info('Google One Tap: Logging in customer', ['customer_id' => $customer->getId()]);
-            }
-            $this->customerSession->setCustomerAsLoggedIn($customer);
-
-            // Regenerate session ID for security and persistence
-            $this->customerSession->regenerateId();
-
-            if ($this->config->isDebugLoggingEnabled()) {
-                $this->logger->info('Google One Tap: Customer logged in successfully', [
-                    'session_id' => $this->customerSession->getSessionId()
-                ]);
-            }
+            $this->socialLoginService->loginCustomer($customer, $this->customerSession);
 
             return $result->setData(['success' => true]);
 

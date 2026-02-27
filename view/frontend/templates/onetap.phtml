@@ -12,6 +12,9 @@ if (!$block->isCustomerLoggedIn() && $block->isEnable()) :
     $loginUri = $escaper->escapeUrl($block->getUrl('customer/account'));
     $callbackUrl = $escaper->escapeUrl($block->getUrl('onetaplogin/checkout/response'));
     $positionClass = $escaper->escapeHtml($block->getPosition());
+    $context = $escaper->escapeHtml($block->getContext());
+    $itpSupport = $block->isItpSupport() ? 'true' : 'false';
+    $promptParentId = $escaper->escapeHtml($block->getPromptParentId());
 
     $autoSign = $block->getAutoSign() ? 'data-auto_select="true"' : '';
     $cancelOnTapOutside = (!$block->getClickDisable() && !$block->getAutoSign())
@@ -21,20 +24,29 @@ if (!$block->isCustomerLoggedIn() && $block->isEnable()) :
     <!-- Google One Tap Container -->
     <div id="g_id_onload"
          data-client_id="<?= $clientId ?>"
-         data-context="signin"
-         data-callback="googleLoginEndpoint"
+         data-context="<?= $context ?>"
+         data-callback="RollpixSocialLogin.googleCallback"
          data-login_uri="<?= $loginUri ?>"
-         data-itp_support="true"
+         data-itp_support="<?= $itpSupport ?>"
+        <?php if (!empty($promptParentId)): ?>
+         data-prompt_parent_id="<?= $promptParentId ?>"
+        <?php endif; ?>
+        <?php if ($block->isCloseCallbackEnabled()): ?>
+         data-moment_callback="RollpixSocialLogin.onPromptMoment"
+        <?php endif; ?>
         <?= $autoSign ?>
         <?= $cancelOnTapOutside ?>>
     </div>
 
     <!-- Google One Tap Callback Script -->
     <script>
+        window.RollpixSocialLogin = window.RollpixSocialLogin || {};
+        window.RollpixSocialLogin.callbackUrl = "<?= $callbackUrl ?>";
+
         /**
          * Display error message to user using Magento's message system
          */
-        function showErrorMessage(message) {
+        window.RollpixSocialLogin.showErrorMessage = function(message) {
             require(['Magento_Ui/js/model/messageList', 'jquery'], function(messageList, $) {
                 messageList.addErrorMessage({
                     message: message
@@ -45,85 +57,105 @@ if (!$block->isCustomerLoggedIn() && $block->isEnable()) :
                     scrollTop: $('.page.messages').offset()?.top || 0
                 }, 500);
             });
-        }
+        };
 
-        function googleLoginEndpoint(googleUser) {
-            console.log('Google One Tap callback triggered', googleUser);
-            const xhr = new XMLHttpRequest();
-            xhr.open("POST", "<?= $callbackUrl ?>", true);
+        /**
+         * Handle successful login response - reload customer data and page
+         */
+        window.RollpixSocialLogin.handleLoginSuccess = function() {
+            require(['Magento_Customer/js/customer-data', 'jquery'], function(customerData, $) {
+                var customerDataLoaded = false;
+                var reloadTimeout;
+
+                var customerDataListener = function() {
+                    var customer = customerData.get('customer')();
+                    if (customer && customer.firstname) {
+                        customerDataLoaded = true;
+                        clearTimeout(reloadTimeout);
+                        $(document).off('customer-data-reload', customerDataListener);
+                        window.location.reload();
+                    }
+                };
+
+                $(document).on('customer-data-reload', customerDataListener);
+                customerData.get('customer').subscribe(customerDataListener);
+
+                customerData.invalidate(['customer', 'cart']);
+                customerData.reload(['customer', 'cart'], true);
+
+                reloadTimeout = setTimeout(function() {
+                    if (!customerDataLoaded) {
+                        $(document).off('customer-data-reload', customerDataListener);
+                        window.location.reload();
+                    }
+                }, 1000);
+            });
+        };
+
+        /**
+         * Google One Tap / Sign-In Button callback
+         */
+        window.RollpixSocialLogin.googleCallback = function(googleUser) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", window.RollpixSocialLogin.callbackUrl, true);
             xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
 
             xhr.onreadystatechange = function () {
                 if (xhr.readyState === 4) {
                     if (xhr.status === 200) {
                         try {
-                            const response = JSON.parse(xhr.responseText);
+                            var response = JSON.parse(xhr.responseText);
                             if (response.success) {
-                                console.log('Google One Tap: Login successful, reloading customer data...');
-                                require(['Magento_Customer/js/customer-data', 'jquery'], function(customerData, $) {
-                                    let customerDataLoaded = false;
-                                    let reloadTimeout;
-
-                                    // Listen for customer data reload
-                                    const customerDataListener = function() {
-                                        const customer = customerData.get('customer')();
-                                        if (customer && customer.firstname) {
-                                            customerDataLoaded = true;
-                                            console.log('Google One Tap: Customer data confirmed loaded');
-                                            clearTimeout(reloadTimeout);
-                                            $(document).off('customer-data-reload', customerDataListener);
-                                            window.location.reload();
-                                        }
-                                    };
-
-                                    // Subscribe to customer data changes
-                                    $(document).on('customer-data-reload', customerDataListener);
-                                    customerData.get('customer').subscribe(customerDataListener);
-
-                                    // Invalidate and reload customer and cart sections
-                                    customerData.invalidate(['customer', 'cart']);
-                                    customerData.reload(['customer', 'cart'], true);
-
-                                    // Fallback: reload after 1 second if customer data hasn't loaded
-                                    reloadTimeout = setTimeout(function() {
-                                        if (!customerDataLoaded) {
-                                            console.log('Google One Tap: Fallback timeout - reloading page...');
-                                            $(document).off('customer-data-reload', customerDataListener);
-                                            window.location.reload();
-                                        }
-                                    }, 1000);
-                                });
+                                window.RollpixSocialLogin.handleLoginSuccess();
                             } else {
-                                console.error('Google One Tap login failed:', response.message || 'Unknown error');
-                                showErrorMessage(response.message || '<?= $escaper->escapeJs(__('Authentication failed. Please try again.')) ?>');
+                                window.RollpixSocialLogin.showErrorMessage(
+                                    response.message || '<?= $escaper->escapeJs(__('Authentication failed. Please try again.')) ?>'
+                                );
                             }
                         } catch (e) {
-                            console.error('Invalid response from Google One Tap endpoint:', e);
-                            showErrorMessage('<?= $escaper->escapeJs(__('An unexpected error occurred. Please try again.')) ?>');
+                            window.RollpixSocialLogin.showErrorMessage(
+                                '<?= $escaper->escapeJs(__('An unexpected error occurred. Please try again.')) ?>'
+                            );
                         }
                     } else {
-                        console.error('Google One Tap network error. Status:', xhr.status);
-                        showErrorMessage('<?= $escaper->escapeJs(__('Network error. Please check your connection and try again.')) ?>');
+                        window.RollpixSocialLogin.showErrorMessage(
+                            '<?= $escaper->escapeJs(__('Network error. Please check your connection and try again.')) ?>'
+                        );
                     }
                 }
             };
 
-            const params = "id_token=" + encodeURIComponent(googleUser.credential);
-            console.log('Sending params:', params);
-            console.log('URL:', "<?= $callbackUrl ?>");
+            var params = "id_token=" + encodeURIComponent(googleUser.credential);
             xhr.send(params);
-        }
+        };
+
+        <?php if ($block->isCloseCallbackEnabled()): ?>
+        /**
+         * Google One Tap prompt moment callback
+         */
+        window.RollpixSocialLogin.onPromptMoment = function(notification) {
+            if (notification.isDismissedMoment && notification.isDismissedMoment()) {
+                var reason = notification.getDismissedReason ? notification.getDismissedReason() : 'unknown';
+                if (reason === 'credential_returned') {
+                    return; // User selected an account, not a dismissal
+                }
+                window.RollpixSocialLogin.showErrorMessage(
+                    '<?= $escaper->escapeJs(__('You dismissed the Google sign-in prompt. You can still sign in using the login form or the Google Sign-In button.')) ?>'
+                );
+            }
+        };
+        <?php endif; ?>
     </script>
 
     <!-- Add Position Class to Google Picker Container -->
     <script>
         require(['jquery'], function ($) {
             $(function () {
-                let attempts = 0;
-                const maxAttempts = 50; // 5 seconds maximum (50 * 100ms)
+                var attempts = 0;
+                var maxAttempts = 50; // 5 seconds maximum (50 * 100ms)
 
-                const interval = setInterval(function () {
-                    const container = $('#credential_picker_container');
+                var interval = setInterval(function () {
+                    var container = $('#credential_picker_container');
                     attempts++;
 
                     if (container.length) {
@@ -131,7 +163,6 @@ if (!$block->isCustomerLoggedIn() && $block->isEnable()) :
                         clearInterval(interval);
                     } else if (attempts >= maxAttempts) {
                         clearInterval(interval);
-                        console.warn('Google One Tap container not found after 5 seconds');
                     }
                 }, 100);
             });

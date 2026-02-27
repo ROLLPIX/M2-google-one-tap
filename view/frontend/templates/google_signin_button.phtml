@@ -1,0 +1,150 @@
+<?php
+/**
+ * @var GoogleSignInButton $block
+ * @var Escaper $escaper
+ */
+
+use Rollpix\GoogleOneTap\Block\GoogleSignInButton;
+use Magento\Framework\Escaper;
+
+if ($block->shouldRender()) :
+    $clientId = $escaper->escapeJs($block->getClientId());
+    $callbackUrl = $escaper->escapeUrl($block->getCallbackUrl());
+    $buttonConfig = /* @noEscape */ $block->getButtonConfigJson();
+    $customSelector = $escaper->escapeJs($block->getButtonCustomSelector());
+    ?>
+
+    <div class="rollpix-social-login-wrapper">
+        <div class="rollpix-social-login-divider">
+            <span><?= $escaper->escapeHtml(__('Or')) ?></span>
+        </div>
+        <div id="rollpix-google-signin-button" class="rollpix-social-login-button"></div>
+    </div>
+
+    <script>
+        (function() {
+            var initialized = false;
+
+            function initGoogleButton() {
+                if (initialized) return;
+                if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) return;
+                initialized = true;
+
+                // Ensure the shared namespace and callback exist
+                window.RollpixSocialLogin = window.RollpixSocialLogin || {};
+
+                if (!window.RollpixSocialLogin.googleCallback) {
+                    // Callback not yet defined by onetap.phtml (One Tap may be disabled)
+                    // Define it here as a fallback
+                    window.RollpixSocialLogin.callbackUrl = window.RollpixSocialLogin.callbackUrl || "<?= $callbackUrl ?>";
+
+                    window.RollpixSocialLogin.showErrorMessage = window.RollpixSocialLogin.showErrorMessage || function(message) {
+                        require(['Magento_Ui/js/model/messageList', 'jquery'], function(messageList, $) {
+                            messageList.addErrorMessage({ message: message });
+                            $('html, body').animate({ scrollTop: $('.page.messages').offset()?.top || 0 }, 500);
+                        });
+                    };
+
+                    window.RollpixSocialLogin.handleLoginSuccess = window.RollpixSocialLogin.handleLoginSuccess || function() {
+                        require(['Magento_Customer/js/customer-data', 'jquery'], function(customerData, $) {
+                            var loaded = false;
+                            var timeout;
+                            var listener = function() {
+                                var customer = customerData.get('customer')();
+                                if (customer && customer.firstname) {
+                                    loaded = true;
+                                    clearTimeout(timeout);
+                                    $(document).off('customer-data-reload', listener);
+                                    window.location.reload();
+                                }
+                            };
+                            $(document).on('customer-data-reload', listener);
+                            customerData.get('customer').subscribe(listener);
+                            customerData.invalidate(['customer', 'cart']);
+                            customerData.reload(['customer', 'cart'], true);
+                            timeout = setTimeout(function() {
+                                if (!loaded) {
+                                    $(document).off('customer-data-reload', listener);
+                                    window.location.reload();
+                                }
+                            }, 1000);
+                        });
+                    };
+
+                    window.RollpixSocialLogin.googleCallback = function(googleUser) {
+                        var xhr = new XMLHttpRequest();
+                        xhr.open("POST", window.RollpixSocialLogin.callbackUrl, true);
+                        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+                        xhr.onreadystatechange = function() {
+                            if (xhr.readyState === 4) {
+                                if (xhr.status === 200) {
+                                    try {
+                                        var response = JSON.parse(xhr.responseText);
+                                        if (response.success) {
+                                            window.RollpixSocialLogin.handleLoginSuccess();
+                                        } else {
+                                            window.RollpixSocialLogin.showErrorMessage(
+                                                response.message || '<?= $escaper->escapeJs(__('Authentication failed. Please try again.')) ?>'
+                                            );
+                                        }
+                                    } catch (e) {
+                                        window.RollpixSocialLogin.showErrorMessage(
+                                            '<?= $escaper->escapeJs(__('An unexpected error occurred. Please try again.')) ?>'
+                                        );
+                                    }
+                                } else {
+                                    window.RollpixSocialLogin.showErrorMessage(
+                                        '<?= $escaper->escapeJs(__('Network error. Please check your connection and try again.')) ?>'
+                                    );
+                                }
+                            }
+                        };
+                        xhr.send("id_token=" + encodeURIComponent(googleUser.credential));
+                    };
+                }
+
+                // Initialize Google Sign-In (safe to call multiple times - GSI handles it)
+                google.accounts.id.initialize({
+                    client_id: "<?= $clientId ?>",
+                    callback: window.RollpixSocialLogin.googleCallback
+                });
+
+                // Render button in default container
+                var container = document.getElementById('rollpix-google-signin-button');
+                if (container) {
+                    var buttonConfig = <?= $buttonConfig ?>;
+                    google.accounts.id.renderButton(container, buttonConfig);
+                }
+
+                <?php if (!empty($customSelector)): ?>
+                // Render in custom selector container
+                var customContainer = document.querySelector("<?= $customSelector ?>");
+                if (customContainer) {
+                    var cloneDiv = document.createElement('div');
+                    cloneDiv.id = 'rollpix-google-signin-button-custom';
+                    cloneDiv.className = 'rollpix-social-login-button';
+                    customContainer.appendChild(cloneDiv);
+                    google.accounts.id.renderButton(cloneDiv, <?= $buttonConfig ?>);
+                }
+                <?php endif; ?>
+            }
+
+            // Wait for GSI library to be available
+            if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+                initGoogleButton();
+            } else {
+                var attempts = 0;
+                var maxAttempts = 50;
+                var interval = setInterval(function() {
+                    attempts++;
+                    if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+                        clearInterval(interval);
+                        initGoogleButton();
+                    } else if (attempts >= maxAttempts) {
+                        clearInterval(interval);
+                    }
+                }, 100);
+            }
+        })();
+    </script>
+<?php endif; ?>

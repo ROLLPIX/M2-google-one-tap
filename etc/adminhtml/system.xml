@@ -19,30 +19,120 @@
                     <source_model>Magento\Config\Model\Config\Source\Enabledisable</source_model>
                 </field>
             </group>
-            <group id="general" translate="label" type="text" sortOrder="1" showInDefault="1"
+            <group id="general" translate="label" type="text" sortOrder="5" showInDefault="1"
                    showInWebsite="1" showInStore="0">
-                <label>Module Configurations</label>
+                <label>One Tap Popup Configuration</label>
                 <field id="client_id" translate="label" type="obscure" sortOrder="0"
                        showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Client Id</label>
                     <validate>required-entry</validate>
                     <backend_model>Magento\Config\Model\Config\Backend\Encrypted</backend_model>
                 </field>
-                <field id="background_click" translate="label" type="select" showInDefault="1"
-                       canRestore="1">
+                <field id="background_click" translate="label" type="select" sortOrder="5"
+                       showInDefault="1" showInWebsite="1" showInStore="0" canRestore="1">
                     <label>Close Prompt on Background Click</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
-                <field id="auto_signin" translate="label" type="select" showInDefault="1"
-                       canRestore="1">
+                <field id="auto_signin" translate="label" type="select" sortOrder="6"
+                       showInDefault="1" showInWebsite="1" showInStore="0" canRestore="1">
                     <label>Auto Sign in without Clicking Prompt</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
-                <field id="position" translate="label" type="select" sortOrder="10"
+                <field id="position" translate="label comment" type="select" sortOrder="10"
                        showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Position</label>
                     <source_model>Rollpix\GoogleOneTap\Model\Config\Source\Position</source_model>
                     <comment>Select an option from the dropdown.</comment>
+                </field>
+                <field id="context" translate="label comment" type="select" sortOrder="11"
+                       showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Prompt Context</label>
+                    <source_model>Rollpix\GoogleOneTap\Model\Config\Source\Context</source_model>
+                    <comment><![CDATA[Controls the text shown in the One Tap prompt. "Sign In" is recommended for returning users, "Sign Up" for new user acquisition.]]></comment>
+                </field>
+                <field id="prompt_parent_id" translate="label comment" type="text" sortOrder="12"
+                       showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Prompt Parent Element ID</label>
+                    <comment><![CDATA[Optional. DOM element ID to place the One Tap popup inside a specific element (e.g. <code>my-container</code>). Leave empty for default floating behavior. <strong>Note:</strong> May be ignored on mobile or when FedCM is active.]]></comment>
+                </field>
+                <field id="itp_support" translate="label comment" type="select" sortOrder="13"
+                       showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>ITP Support (Safari)</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Enable Intelligent Tracking Prevention support for Safari browsers. Recommended: Yes.</comment>
+                </field>
+                <field id="close_callback" translate="label comment" type="select" sortOrder="14"
+                       showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Show Message on Dismiss</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[When enabled, shows a notification when the user dismisses the One Tap prompt. <strong>Note:</strong> Google applies an exponential cooldown after dismissals (2h, 1 day, 1 week, 4 weeks). This is controlled by Google and cannot be overridden.]]></comment>
+                </field>
+            </group>
+            <group id="button" translate="label" type="text" sortOrder="10" showInDefault="1"
+                   showInWebsite="1" showInStore="0">
+                <label>Google Sign-In Button</label>
+                <field id="enabled" translate="label comment" type="select" sortOrder="1"
+                       showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Enable Google Sign-In Button</label>
+                    <source_model>Magento\Config\Model\Config\Source\Enabledisable</source_model>
+                    <comment>Show a Google Sign-In button on selected pages for users who missed or dismissed the One Tap popup.</comment>
+                </field>
+                <field id="pages" translate="label comment" type="multiselect" sortOrder="2"
+                       showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Show Button On</label>
+                    <source_model>Rollpix\GoogleOneTap\Model\Config\Source\ButtonPages</source_model>
+                    <comment>Select which pages should display the Google Sign-In button.</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+                <field id="custom_selector" translate="label comment" type="text" sortOrder="3"
+                       showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Custom CSS Selector</label>
+                    <comment><![CDATA[CSS selector where the button should be inserted (e.g. <code>#my-login-area</code>). Only used when "Custom CSS Selector" is selected in "Show Button On".]]></comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+                <field id="theme" translate="label" type="select" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Button Theme</label>
+                    <source_model>Rollpix\GoogleOneTap\Model\Config\Source\ButtonTheme</source_model>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+                <field id="size" translate="label" type="select" sortOrder="11"
+                       showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Button Size</label>
+                    <source_model>Rollpix\GoogleOneTap\Model\Config\Source\ButtonSize</source_model>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+                <field id="shape" translate="label" type="select" sortOrder="12"
+                       showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Button Shape</label>
+                    <source_model>Rollpix\GoogleOneTap\Model\Config\Source\ButtonShape</source_model>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+                <field id="text" translate="label" type="select" sortOrder="13"
+                       showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Button Text</label>
+                    <source_model>Rollpix\GoogleOneTap\Model\Config\Source\ButtonText</source_model>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+                <field id="logo_alignment" translate="label" type="select" sortOrder="14"
+                       showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Logo Alignment</label>
+                    <source_model>Rollpix\GoogleOneTap\Model\Config\Source\ButtonLogoAlignment</source_model>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
                 </field>
             </group>
             <group id="security" translate="label" type="text" sortOrder="20" showInDefault="1"
@@ -77,6 +167,16 @@
                     <depends>
                         <field id="rate_limit_enabled">1</field>
                     </depends>
+                </field>
+            </group>
+            <group id="compatibility" translate="label" type="text" sortOrder="30" showInDefault="1"
+                   showInWebsite="1" showInStore="0">
+                <label>Compatibility</label>
+                <field id="disable_button_amasty" translate="label comment" type="select" sortOrder="1"
+                       showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Disable Google Button when Amasty Social Login is active</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[If Amasty Social Login is installed and provides its own Google login button, disable our Google Sign-In button to avoid duplicates. The One Tap popup will still work as Amasty does not include One Tap functionality.]]></comment>
                 </field>
             </group>
         </section>

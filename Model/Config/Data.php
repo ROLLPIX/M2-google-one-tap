@@ -84,6 +84,148 @@ class Data implements API
         return $this->scopeConfig->isSetFlag(API::XML_STATUS, ScopeInterface::SCOPE_WEBSITE, $websiteId);
     }
 
+    // ── Enhanced One Tap config ────────────────────────────────────────
+
+    /**
+     * Get One Tap prompt context (signin, signup, use)
+     *
+     * @return string
+     */
+    public function getContext(): string
+    {
+        return (string)($this->scopeConfig->getValue(API::XML_CONTEXT, ScopeInterface::SCOPE_WEBSITE) ?: 'signin');
+    }
+
+    /**
+     * Get prompt parent element CSS selector
+     *
+     * @return string
+     */
+    public function getPromptParentId(): string
+    {
+        return (string)$this->scopeConfig->getValue(API::XML_PROMPT_PARENT_ID, ScopeInterface::SCOPE_WEBSITE);
+    }
+
+    /**
+     * Check if ITP (Intelligent Tracking Prevention) support is enabled
+     * Defaults to true for backward compatibility
+     *
+     * @return bool
+     */
+    public function isItpSupport(): bool
+    {
+        $value = $this->scopeConfig->getValue(API::XML_ITP_SUPPORT, ScopeInterface::SCOPE_WEBSITE);
+        return $value === null ? true : (bool)$value;
+    }
+
+    /**
+     * Check if close callback message is enabled
+     *
+     * @return bool
+     */
+    public function isCloseCallbackEnabled(): bool
+    {
+        return $this->scopeConfig->isSetFlag(API::XML_CLOSE_CALLBACK, ScopeInterface::SCOPE_WEBSITE);
+    }
+
+    // ── Google Sign-In Button config ────────────────────────────────────
+
+    /**
+     * Check if Google Sign-In button is enabled
+     *
+     * @param int $websiteId
+     * @return bool
+     */
+    public function isButtonEnabled(int $websiteId): bool
+    {
+        return $this->scopeConfig->isSetFlag(API::XML_BUTTON_ENABLED, ScopeInterface::SCOPE_WEBSITE, $websiteId);
+    }
+
+    /**
+     * Get pages where button should be displayed
+     *
+     * @return array
+     */
+    public function getButtonPages(): array
+    {
+        $value = (string)$this->scopeConfig->getValue(API::XML_BUTTON_PAGES, ScopeInterface::SCOPE_WEBSITE);
+        return $value ? explode(',', $value) : [];
+    }
+
+    /**
+     * Get custom CSS selector for button placement
+     *
+     * @return string
+     */
+    public function getButtonCustomSelector(): string
+    {
+        return (string)$this->scopeConfig->getValue(API::XML_BUTTON_CUSTOM_SELECTOR, ScopeInterface::SCOPE_WEBSITE);
+    }
+
+    /**
+     * Get button theme
+     *
+     * @return string
+     */
+    public function getButtonTheme(): string
+    {
+        return (string)($this->scopeConfig->getValue(API::XML_BUTTON_THEME, ScopeInterface::SCOPE_WEBSITE) ?: 'outline');
+    }
+
+    /**
+     * Get button size
+     *
+     * @return string
+     */
+    public function getButtonSize(): string
+    {
+        return (string)($this->scopeConfig->getValue(API::XML_BUTTON_SIZE, ScopeInterface::SCOPE_WEBSITE) ?: 'large');
+    }
+
+    /**
+     * Get button shape
+     *
+     * @return string
+     */
+    public function getButtonShape(): string
+    {
+        return (string)($this->scopeConfig->getValue(API::XML_BUTTON_SHAPE, ScopeInterface::SCOPE_WEBSITE) ?: 'rectangular');
+    }
+
+    /**
+     * Get button text
+     *
+     * @return string
+     */
+    public function getButtonText(): string
+    {
+        return (string)($this->scopeConfig->getValue(API::XML_BUTTON_TEXT, ScopeInterface::SCOPE_WEBSITE) ?: 'signin_with');
+    }
+
+    /**
+     * Get button logo alignment
+     *
+     * @return string
+     */
+    public function getButtonLogoAlignment(): string
+    {
+        return (string)($this->scopeConfig->getValue(API::XML_BUTTON_LOGO_ALIGNMENT, ScopeInterface::SCOPE_WEBSITE) ?: 'left');
+    }
+
+    // ── Amasty compatibility ────────────────────────────────────────────
+
+    /**
+     * Check if Google button should be disabled when Amasty Social Login is present
+     *
+     * @return bool
+     */
+    public function isDisableButtonWhenAmasty(): bool
+    {
+        return $this->scopeConfig->isSetFlag(API::XML_COMPAT_DISABLE_BUTTON_AMASTY, ScopeInterface::SCOPE_WEBSITE);
+    }
+
+    // ── Security & Logging ──────────────────────────────────────────────
+
     /**
      * Check if debug logging is enabled
      *
