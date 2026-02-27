@@ -141,4 +141,20 @@ class GoogleSignInButton extends Template
     {
         return !empty($this->getButtonCustomSelector());
     }
+
+    /**
+     * Get the configured button position for the current page type
+     *
+     * @return string
+     */
+    public function getButtonPosition(): string
+    {
+        $pageType = $this->getData('page_type') ?: '';
+        return match ($pageType) {
+            'login' => $this->config->getButtonLoginPosition(),
+            'register' => $this->config->getButtonRegisterPosition(),
+            'checkout' => $this->config->getButtonCheckoutPosition(),
+            default => 'below',
+        };
+    }
 }

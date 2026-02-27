@@ -27,6 +27,11 @@ interface DataInterface
     public const XML_BUTTON_TEXT = 'googleonetap/button/text';
     public const XML_BUTTON_LOGO_ALIGNMENT = 'googleonetap/button/logo_alignment';
 
+    // Button position per page
+    public const XML_BUTTON_LOGIN_POSITION = 'googleonetap/button/login_position';
+    public const XML_BUTTON_REGISTER_POSITION = 'googleonetap/button/register_position';
+    public const XML_BUTTON_CHECKOUT_POSITION = 'googleonetap/button/checkout_position';
+
     // Amasty compatibility
     public const XML_COMPAT_DISABLE_BUTTON_AMASTY = 'googleonetap/compatibility/disable_button_amasty';
 

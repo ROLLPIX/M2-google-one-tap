@@ -12,30 +12,171 @@ if ($block->shouldRender()) :
     $callbackUrl = $escaper->escapeUrl($block->getCallbackUrl());
     $buttonConfig = /* @noEscape */ $block->getButtonConfigJson();
     $customSelector = $escaper->escapeJs($block->getButtonCustomSelector());
+    $pageType = $escaper->escapeJs($block->getData('page_type') ?: '');
+    $position = $escaper->escapeJs($block->getButtonPosition());
+    $wrapperId = 'rollpix-social-login-' . ($block->getData('page_type') ?: 'default');
+    $buttonId = 'rollpix-google-signin-button-' . ($block->getData('page_type') ?: 'default');
     ?>
 
-    <div class="rollpix-social-login-wrapper">
+    <!-- Google Sign-In Button wrapper (relocated via JS based on position config) -->
+    <div id="<?= $escaper->escapeHtmlAttr($wrapperId) ?>"
+         class="rollpix-social-login-wrapper"
+         style="display:none">
         <div class="rollpix-social-login-divider">
             <span><?= $escaper->escapeHtml(__('Or')) ?></span>
         </div>
-        <div id="rollpix-google-signin-button" class="rollpix-social-login-button"></div>
+        <div id="<?= $escaper->escapeHtmlAttr($buttonId) ?>" class="rollpix-social-login-button"></div>
     </div>
 
     <script>
         (function() {
-            var initialized = false;
+            var wrapperId = '<?= $escaper->escapeJs($wrapperId) ?>';
+            var buttonId = '<?= $escaper->escapeJs($buttonId) ?>';
+            var pageType = '<?= $pageType ?>';
+            var position = '<?= $position ?>';
+            var relocated = false;
+            var buttonRendered = false;
+
+            // ── Relocation functions per page type ──────────────────────────
+
+            function relocateLogin(wrapper, pos) {
+                var loginBlock = document.querySelector('.block-customer-login .block-content');
+                if (!loginBlock) return false;
+
+                if (pos === 'above') {
+                    var form = loginBlock.querySelector('form.form-login');
+                    if (form) {
+                        loginBlock.insertBefore(wrapper, form);
+                    } else {
+                        loginBlock.insertBefore(wrapper, loginBlock.firstChild);
+                    }
+                } else {
+                    // 'below' (default) - append at end of login block
+                    loginBlock.appendChild(wrapper);
+                }
+                wrapper.style.display = '';
+                return true;
+            }
+
+            function relocateRegister(wrapper, pos) {
+                var form = document.querySelector('form.form-create-account');
+                if (!form) return false;
+
+                if (pos === 'above') {
+                    form.parentNode.insertBefore(wrapper, form);
+                    wrapper.style.display = '';
+                } else if (pos === 'side') {
+                    // Create flex wrapper around the form with a side column
+                    if (!document.querySelector('.rollpix-register-flex-wrapper')) {
+                        var flexWrapper = document.createElement('div');
+                        flexWrapper.className = 'rollpix-register-flex-wrapper';
+                        form.parentNode.insertBefore(flexWrapper, form);
+                        flexWrapper.appendChild(form);
+
+                        var sideCol = document.createElement('div');
+                        sideCol.className = 'rollpix-register-side-column';
+
+                        var card = document.createElement('div');
+                        card.className = 'rollpix-register-side-card';
+
+                        var title = document.createElement('p');
+                        title.className = 'rollpix-register-side-title';
+                        title.textContent = '<?= $escaper->escapeJs(__('Quick sign up with your Google account')) ?>';
+                        card.appendChild(title);
+
+                        // Hide the "Or" divider in side layout
+                        var divider = wrapper.querySelector('.rollpix-social-login-divider');
+                        if (divider) divider.style.display = 'none';
+
+                        card.appendChild(wrapper);
+                        sideCol.appendChild(card);
+                        flexWrapper.appendChild(sideCol);
+                    }
+                    wrapper.style.display = '';
+                } else {
+                    // 'below' (default)
+                    if (form.nextSibling) {
+                        form.parentNode.insertBefore(wrapper, form.nextSibling);
+                    } else {
+                        form.parentNode.appendChild(wrapper);
+                    }
+                    wrapper.style.display = '';
+                }
+                return true;
+            }
+
+            function relocateCheckout(wrapper, pos) {
+                if (pos === 'below') {
+                    // Insert after the authentication/email section
+                    var target = document.querySelector('.authentication-wrapper')
+                              || document.querySelector('[data-role="email-with-possible-login"]')
+                              || document.querySelector('.am-opc-login-wrapper')
+                              || document.querySelector('#customer-email-fieldset');
+                    if (!target) return false;
+
+                    if (target.nextSibling) {
+                        target.parentNode.insertBefore(wrapper, target.nextSibling);
+                    } else {
+                        target.parentNode.appendChild(wrapper);
+                    }
+                    wrapper.style.display = '';
+                    return true;
+                }
+
+                // 'left' or 'right' - position inside the actions toolbar
+                var actionsToolbar = document.querySelector('.authentication-wrapper .actions-toolbar')
+                                  || document.querySelector('.form-login .actions-toolbar')
+                                  || document.querySelector('.opc-wrapper .form-login .actions-toolbar')
+                                  || document.querySelector('.am-checkout .form-login .actions-toolbar');
+                if (!actionsToolbar) return false;
+
+                // Hide the "Or" divider for inline layout
+                var divider = wrapper.querySelector('.rollpix-social-login-divider');
+                if (divider) divider.style.display = 'none';
+
+                wrapper.classList.add('rollpix-checkout-inline');
+                actionsToolbar.classList.add('rollpix-checkout-flex');
+
+                if (pos === 'left') {
+                    actionsToolbar.insertBefore(wrapper, actionsToolbar.firstChild);
+                } else {
+                    // 'right'
+                    actionsToolbar.appendChild(wrapper);
+                }
+                wrapper.style.display = '';
+                return true;
+            }
+
+            // ── Main relocation dispatcher ──────────────────────────────────
+
+            function relocateWrapper() {
+                var wrapper = document.getElementById(wrapperId);
+                if (!wrapper) return false;
+
+                if (pageType === 'login') {
+                    return relocateLogin(wrapper, position);
+                } else if (pageType === 'register') {
+                    return relocateRegister(wrapper, position);
+                } else if (pageType === 'checkout') {
+                    return relocateCheckout(wrapper, position);
+                }
+
+                // Unknown page type - just show in place
+                wrapper.style.display = '';
+                return true;
+            }
+
+            // ── Google Sign-In Button rendering ─────────────────────────────
 
             function initGoogleButton() {
-                if (initialized) return;
-                if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) return;
-                initialized = true;
+                if (buttonRendered) return true;
+                if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) return false;
 
                 // Ensure the shared namespace and callback exist
                 window.RollpixSocialLogin = window.RollpixSocialLogin || {};
 
                 if (!window.RollpixSocialLogin.googleCallback) {
                     // Callback not yet defined by onetap.phtml (One Tap may be disabled)
-                    // Define it here as a fallback
                     window.RollpixSocialLogin.callbackUrl = window.RollpixSocialLogin.callbackUrl || "<?= $callbackUrl ?>";
 
                     window.RollpixSocialLogin.showErrorMessage = window.RollpixSocialLogin.showErrorMessage || function(message) {
@@ -109,17 +250,17 @@ if ($block->shouldRender()) :
                     callback: window.RollpixSocialLogin.googleCallback
                 });
 
-                // Render button in default container
-                var container = document.getElementById('rollpix-google-signin-button');
+                // Render button in the wrapper container
+                var container = document.getElementById(buttonId);
                 if (container) {
-                    var buttonConfig = <?= $buttonConfig ?>;
-                    google.accounts.id.renderButton(container, buttonConfig);
+                    var btnConfig = <?= $buttonConfig ?>;
+                    google.accounts.id.renderButton(container, btnConfig);
                 }
 
                 <?php if (!empty($customSelector)): ?>
                 // Render in custom selector container
                 var customContainer = document.querySelector("<?= $customSelector ?>");
-                if (customContainer) {
+                if (customContainer && !document.getElementById('rollpix-google-signin-button-custom')) {
                     var cloneDiv = document.createElement('div');
                     cloneDiv.id = 'rollpix-google-signin-button-custom';
                     cloneDiv.className = 'rollpix-social-login-button';
@@ -127,23 +268,40 @@ if ($block->shouldRender()) :
                     google.accounts.id.renderButton(cloneDiv, <?= $buttonConfig ?>);
                 }
                 <?php endif; ?>
+
+                buttonRendered = true;
+                return true;
             }
 
-            // Wait for GSI library to be available
-            if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
-                initGoogleButton();
-            } else {
+            // ── Initialization with polling ─────────────────────────────────
+
+            function tryInit() {
+                if (!relocated) {
+                    relocated = relocateWrapper();
+                }
+                if (relocated && !buttonRendered) {
+                    initGoogleButton();
+                }
+                return relocated && buttonRendered;
+            }
+
+            function startInit() {
+                if (tryInit()) return;
+
                 var attempts = 0;
-                var maxAttempts = 50;
+                var maxAttempts = 80; // 8 seconds (80 * 100ms)
                 var interval = setInterval(function() {
                     attempts++;
-                    if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
-                        clearInterval(interval);
-                        initGoogleButton();
-                    } else if (attempts >= maxAttempts) {
+                    if (tryInit() || attempts >= maxAttempts) {
                         clearInterval(interval);
                     }
                 }, 100);
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', startInit);
+            } else {
+                startInit();
             }
         })();
     </script>

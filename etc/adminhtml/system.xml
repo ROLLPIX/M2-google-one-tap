@@ -94,6 +94,33 @@
                         <field id="enabled">1</field>
                     </depends>
                 </field>
+                <field id="login_position" translate="label comment" type="select" sortOrder="4"
+                       showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Login Page Position</label>
+                    <source_model>Rollpix\GoogleOneTap\Model\Config\Source\ButtonLoginPosition</source_model>
+                    <comment>Where to display the Google button on the customer login page.</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+                <field id="register_position" translate="label comment" type="select" sortOrder="5"
+                       showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Registration Page Position</label>
+                    <source_model>Rollpix\GoogleOneTap\Model\Config\Source\ButtonRegisterPosition</source_model>
+                    <comment><![CDATA[Where to display the Google button on the registration page. "Side Column" places it next to the form for quick sign-up.]]></comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+                <field id="checkout_position" translate="label comment" type="select" sortOrder="6"
+                       showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Checkout Page Position</label>
+                    <source_model>Rollpix\GoogleOneTap\Model\Config\Source\ButtonCheckoutPosition</source_model>
+                    <comment>Where to display the Google button on the checkout page. Compatible with Amasty Checkout.</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
                 <field id="theme" translate="label" type="select" sortOrder="10"
                        showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Button Theme</label>

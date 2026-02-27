@@ -212,6 +212,38 @@ class Data implements API
         return (string)($this->scopeConfig->getValue(API::XML_BUTTON_LOGO_ALIGNMENT, ScopeInterface::SCOPE_WEBSITE) ?: 'left');
     }
 
+    // ── Button position per page ────────────────────────────────────────
+
+    /**
+     * Get button position on login page
+     *
+     * @return string
+     */
+    public function getButtonLoginPosition(): string
+    {
+        return (string)($this->scopeConfig->getValue(API::XML_BUTTON_LOGIN_POSITION, ScopeInterface::SCOPE_WEBSITE) ?: 'below');
+    }
+
+    /**
+     * Get button position on registration page
+     *
+     * @return string
+     */
+    public function getButtonRegisterPosition(): string
+    {
+        return (string)($this->scopeConfig->getValue(API::XML_BUTTON_REGISTER_POSITION, ScopeInterface::SCOPE_WEBSITE) ?: 'below');
+    }
+
+    /**
+     * Get button position on checkout page
+     *
+     * @return string
+     */
+    public function getButtonCheckoutPosition(): string
+    {
+        return (string)($this->scopeConfig->getValue(API::XML_BUTTON_CHECKOUT_POSITION, ScopeInterface::SCOPE_WEBSITE) ?: 'below');
+    }
+
     // ── Amasty compatibility ────────────────────────────────────────────
 
     /**

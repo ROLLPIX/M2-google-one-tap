@@ -1,3 +1,4 @@
+// One Tap popup positioning
 #credential_picker_container.top-left {
     left: 20px;
 }
@@ -13,7 +14,7 @@
     top: unset;
 }
 
-// Google Sign-In Button
+// Google Sign-In Button - Base styles
 .rollpix-social-login-wrapper {
     margin: 20px 0;
     text-align: center;
@@ -47,4 +48,76 @@
     display: flex;
     justify-content: center;
     margin: 10px 0;
+}
+
+// Registration page - Side column layout
+.rollpix-register-flex-wrapper {
+    display: flex;
+    gap: 30px;
+    align-items: flex-start;
+
+    > form.form-create-account {
+        flex: 1;
+        min-width: 0;
+    }
+}
+
+.rollpix-register-side-column {
+    width: 280px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 20px;
+}
+
+.rollpix-register-side-card {
+    background: #f7f7f7;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 25px 20px;
+    text-align: center;
+
+    .rollpix-social-login-wrapper {
+        margin: 0;
+    }
+}
+
+.rollpix-register-side-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+    margin: 0 0 15px;
+    line-height: 1.4;
+}
+
+// Checkout - Inline button (left/right of login)
+.rollpix-checkout-flex {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.rollpix-checkout-inline {
+    margin: 0;
+
+    .rollpix-social-login-button {
+        margin: 0;
+    }
+}
+
+// Responsive
+@media (max-width: 767px) {
+    .rollpix-register-flex-wrapper {
+        flex-direction: column;
+    }
+
+    .rollpix-register-side-column {
+        width: 100%;
+        position: static;
+    }
+
+    .rollpix-checkout-flex {
+        flex-direction: column;
+        align-items: flex-start;
+    }
 }
