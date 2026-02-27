@@ -206,6 +206,11 @@
                     <comment><![CDATA[If Amasty Social Login is installed and provides its own Google login button, disable our Google Sign-In button to avoid duplicates. The One Tap popup will still work as Amasty does not include One Tap functionality.]]></comment>
                 </field>
             </group>
+            <group id="info" translate="label" type="text" sortOrder="100" showInDefault="1"
+                   showInWebsite="1" showInStore="0">
+                <label>Module Information</label>
+                <frontend_model>Rollpix\GoogleOneTap\Block\Adminhtml\System\Config\ModuleInfo</frontend_model>
+            </group>
         </section>
     </system>
 </config>
