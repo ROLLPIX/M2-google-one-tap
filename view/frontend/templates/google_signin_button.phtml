@@ -37,7 +37,20 @@ if ($block->shouldRender()) :
             var relocated = false;
             var buttonRendered = false;
 
-            // ── Relocation functions per page type ──────────────────────────
+            // ── Helper: flip divider/button order for "above" positions ───
+            function applyDividerOrder(wrapper, pos) {
+                if (pos === 'above') {
+                    wrapper.classList.add('rollpix-position-above');
+                }
+            }
+
+            // ── Helper: hide the "Or" divider ────────────────────────────
+            function hideDivider(wrapper) {
+                var divider = wrapper.querySelector('.rollpix-social-login-divider');
+                if (divider) divider.style.display = 'none';
+            }
+
+            // ── Relocation: Login page ───────────────────────────────────
 
             function relocateLogin(wrapper, pos) {
                 var loginBlock = document.querySelector('.block-customer-login .block-content');
@@ -54,9 +67,12 @@ if ($block->shouldRender()) :
                     // 'below' (default) - append at end of login block
                     loginBlock.appendChild(wrapper);
                 }
+                applyDividerOrder(wrapper, pos);
                 wrapper.style.display = '';
                 return true;
             }
+
+            // ── Relocation: Registration page ────────────────────────────
 
             function relocateRegister(wrapper, pos) {
                 var form = document.querySelector('form.form-create-account');
@@ -64,17 +80,26 @@ if ($block->shouldRender()) :
 
                 if (pos === 'above') {
                     form.parentNode.insertBefore(wrapper, form);
+                    applyDividerOrder(wrapper, pos);
                     wrapper.style.display = '';
                 } else if (pos === 'side') {
                     // Create flex wrapper around the form with a side column
                     if (!document.querySelector('.rollpix-register-flex-wrapper')) {
+                        var parent = form.parentNode;
                         var flexWrapper = document.createElement('div');
                         flexWrapper.className = 'rollpix-register-flex-wrapper';
-                        form.parentNode.insertBefore(flexWrapper, form);
+                        // Inline styles as fallback to guarantee flex behavior
+                        flexWrapper.style.cssText = 'display:flex!important;gap:30px;align-items:flex-start;width:100%';
+
+                        parent.insertBefore(flexWrapper, form);
                         flexWrapper.appendChild(form);
+
+                        // Ensure form fills available space
+                        form.style.cssText = (form.style.cssText || '') + ';flex:1;min-width:0;max-width:none!important;width:auto!important';
 
                         var sideCol = document.createElement('div');
                         sideCol.className = 'rollpix-register-side-column';
+                        sideCol.style.cssText = 'width:280px;min-width:280px;flex-shrink:0;position:sticky;top:20px';
 
                         var card = document.createElement('div');
                         card.className = 'rollpix-register-side-card';
@@ -84,10 +109,7 @@ if ($block->shouldRender()) :
                         title.textContent = '<?= $escaper->escapeJs(__('Quick sign up with your Google account')) ?>';
                         card.appendChild(title);
 
-                        // Hide the "Or" divider in side layout
-                        var divider = wrapper.querySelector('.rollpix-social-login-divider');
-                        if (divider) divider.style.display = 'none';
-
+                        hideDivider(wrapper);
                         card.appendChild(wrapper);
                         sideCol.appendChild(card);
                         flexWrapper.appendChild(sideCol);
@@ -105,49 +127,91 @@ if ($block->shouldRender()) :
                 return true;
             }
 
+            // ── Relocation: Checkout page ────────────────────────────────
+
             function relocateCheckout(wrapper, pos) {
                 if (pos === 'below') {
-                    // Insert after the authentication/email section
-                    var target = document.querySelector('.authentication-wrapper')
-                              || document.querySelector('[data-role="email-with-possible-login"]')
-                              || document.querySelector('.am-opc-login-wrapper')
-                              || document.querySelector('#customer-email-fieldset');
-                    if (!target) return false;
-
-                    if (target.nextSibling) {
-                        target.parentNode.insertBefore(wrapper, target.nextSibling);
-                    } else {
-                        target.parentNode.appendChild(wrapper);
-                    }
-                    wrapper.style.display = '';
-                    return true;
+                    return relocateCheckoutBelow(wrapper);
                 }
+                // 'left' or 'right' - try inline, fallback to below
+                return relocateCheckoutInline(wrapper, pos) || relocateCheckoutBelow(wrapper);
+            }
 
-                // 'left' or 'right' - position inside the actions toolbar
-                var actionsToolbar = document.querySelector('.authentication-wrapper .actions-toolbar')
-                                  || document.querySelector('.form-login .actions-toolbar')
-                                  || document.querySelector('.opc-wrapper .form-login .actions-toolbar')
-                                  || document.querySelector('.am-checkout .form-login .actions-toolbar');
-                if (!actionsToolbar) return false;
+            function relocateCheckoutBelow(wrapper) {
+                var target = document.querySelector('[data-role="email-with-possible-login"]')
+                          || document.querySelector('#customer-email-fieldset')
+                          || document.querySelector('.am-opc-login-wrapper')
+                          || document.querySelector('.authentication-wrapper')
+                          || document.querySelector('.opc-wrapper .step-title');
+                if (!target) return false;
 
-                // Hide the "Or" divider for inline layout
-                var divider = wrapper.querySelector('.rollpix-social-login-divider');
-                if (divider) divider.style.display = 'none';
-
-                wrapper.classList.add('rollpix-checkout-inline');
-                actionsToolbar.classList.add('rollpix-checkout-flex');
-
-                if (pos === 'left') {
-                    actionsToolbar.insertBefore(wrapper, actionsToolbar.firstChild);
+                wrapper.classList.add('rollpix-checkout-below');
+                if (target.nextSibling) {
+                    target.parentNode.insertBefore(wrapper, target.nextSibling);
                 } else {
-                    // 'right'
-                    actionsToolbar.appendChild(wrapper);
+                    target.parentNode.appendChild(wrapper);
                 }
                 wrapper.style.display = '';
                 return true;
             }
 
-            // ── Main relocation dispatcher ──────────────────────────────────
+            function relocateCheckoutInline(wrapper, pos) {
+                // Strategy 1: Native checkout - place next to the "Sign In" toggle button
+                var authWrapper = document.querySelector('.authentication-wrapper');
+                if (authWrapper) {
+                    var toggleBtn = authWrapper.querySelector('.action-auth-toggle');
+                    if (toggleBtn) {
+                        hideDivider(wrapper);
+                        wrapper.classList.add('rollpix-checkout-inline');
+                        authWrapper.classList.add('rollpix-has-google-btn');
+
+                        // Find the popup element to insert before it (keep popup as last child)
+                        var popup = authWrapper.querySelector('.block-authentication');
+
+                        if (pos === 'left') {
+                            authWrapper.insertBefore(wrapper, toggleBtn);
+                        } else {
+                            // 'right' - insert after toggle, before popup
+                            if (popup) {
+                                authWrapper.insertBefore(wrapper, popup);
+                            } else if (toggleBtn.nextSibling) {
+                                authWrapper.insertBefore(wrapper, toggleBtn.nextSibling);
+                            } else {
+                                authWrapper.appendChild(wrapper);
+                            }
+                        }
+                        wrapper.style.display = '';
+                        return true;
+                    }
+                }
+
+                // Strategy 2: Amasty/other checkout with visible login form
+                var loginForms = document.querySelectorAll('.form-login');
+                for (var i = 0; i < loginForms.length; i++) {
+                    var loginForm = loginForms[i];
+                    // Only target visible forms (not inside hidden popups)
+                    if (loginForm.offsetParent !== null) {
+                        var toolbar = loginForm.querySelector('.actions-toolbar');
+                        if (toolbar) {
+                            hideDivider(wrapper);
+                            wrapper.classList.add('rollpix-checkout-inline');
+                            toolbar.classList.add('rollpix-checkout-flex');
+
+                            if (pos === 'left') {
+                                toolbar.insertBefore(wrapper, toolbar.firstChild);
+                            } else {
+                                toolbar.appendChild(wrapper);
+                            }
+                            wrapper.style.display = '';
+                            return true;
+                        }
+                    }
+                }
+
+                return false;
+            }
+
+            // ── Main relocation dispatcher ──────────────────────────────
 
             function relocateWrapper() {
                 var wrapper = document.getElementById(wrapperId);
@@ -166,7 +230,7 @@ if ($block->shouldRender()) :
                 return true;
             }
 
-            // ── Google Sign-In Button rendering ─────────────────────────────
+            // ── Google Sign-In Button rendering ─────────────────────────
 
             function initGoogleButton() {
                 if (buttonRendered) return true;
@@ -273,7 +337,7 @@ if ($block->shouldRender()) :
                 return true;
             }
 
-            // ── Initialization with polling ─────────────────────────────────
+            // ── Initialization with polling ─────────────────────────────
 
             function tryInit() {
                 if (!relocated) {

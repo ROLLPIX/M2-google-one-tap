@@ -18,12 +18,21 @@
 .rollpix-social-login-wrapper {
     margin: 20px 0;
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    // When position is "above", reverse order so button appears first, divider after
+    &.rollpix-position-above {
+        flex-direction: column-reverse;
+    }
 }
 
 .rollpix-social-login-divider {
     position: relative;
     text-align: center;
     margin: 15px 0;
+    width: 100%;
 
     &:before {
         content: '';
@@ -52,18 +61,24 @@
 
 // Registration page - Side column layout
 .rollpix-register-flex-wrapper {
-    display: flex;
+    display: flex !important;
     gap: 30px;
     align-items: flex-start;
+    width: 100%;
+    box-sizing: border-box;
 
-    > form.form-create-account {
+    > form,
+    > .form-create-account {
         flex: 1;
         min-width: 0;
+        max-width: none !important;
+        width: auto !important;
     }
 }
 
 .rollpix-register-side-column {
     width: 280px;
+    min-width: 280px;
     flex-shrink: 0;
     position: sticky;
     top: 20px;
@@ -87,6 +102,24 @@
     color: #333;
     margin: 0 0 15px;
     line-height: 1.4;
+}
+
+// Checkout - Authentication wrapper with inline Google button
+.authentication-wrapper.rollpix-has-google-btn {
+    display: flex !important;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+
+    > .block-authentication {
+        flex-basis: 100%;
+    }
+}
+
+// Checkout - Below position
+.rollpix-checkout-below {
+    max-width: 380px;
+    margin: 20px 0;
 }
 
 // Checkout - Inline button (left/right of login)
@@ -113,7 +146,13 @@
 
     .rollpix-register-side-column {
         width: 100%;
+        min-width: 0;
         position: static;
+    }
+
+    .authentication-wrapper.rollpix-has-google-btn {
+        flex-direction: column;
+        align-items: flex-end;
     }
 
     .rollpix-checkout-flex {
