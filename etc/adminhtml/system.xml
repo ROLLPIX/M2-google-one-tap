@@ -116,7 +116,7 @@
                        showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Checkout Page Position</label>
                     <source_model>Rollpix\GoogleOneTap\Model\Config\Source\ButtonCheckoutPosition</source_model>
-                    <comment>Where to display the Google button on the checkout page. Compatible with Amasty Checkout.</comment>
+                    <comment>Where to display the Google button on the checkout page. Displayed as a styled card. Compatible with native and Amasty Checkout.</comment>
                     <depends>
                         <field id="enabled">1</field>
                     </depends>

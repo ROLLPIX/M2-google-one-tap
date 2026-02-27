@@ -16,9 +16,8 @@ class ButtonCheckoutPosition implements OptionSourceInterface
     public function toOptionArray(): array
     {
         return [
+            ['value' => 'above', 'label' => __('Above Checkout Form')],
             ['value' => 'below', 'label' => __('Below Email Section')],
-            ['value' => 'left', 'label' => __('Left of Login Button')],
-            ['value' => 'right', 'label' => __('Right of Login Button')],
         ];
     }
 }
