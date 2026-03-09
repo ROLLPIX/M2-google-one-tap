@@ -9,7 +9,6 @@ use Magento\Framework\Escaper;
 
 if (!$block->isCustomerLoggedIn() && $block->isEnable()) :
     $clientId = $escaper->escapeHtml($block->getClientId());
-    $loginUri = $escaper->escapeUrl($block->getUrl('customer/account'));
     $callbackUrl = $escaper->escapeUrl($block->getUrl('onetaplogin/checkout/response'));
     $positionClass = $escaper->escapeHtml($block->getPosition());
     $context = $escaper->escapeHtml($block->getContext());
@@ -26,7 +25,7 @@ if (!$block->isCustomerLoggedIn() && $block->isEnable()) :
          data-client_id="<?= $clientId ?>"
          data-context="<?= $context ?>"
          data-callback="RollpixSocialLogin.googleCallback"
-         data-login_uri="<?= $loginUri ?>"
+         data-login_uri="<?= $callbackUrl ?>"
          data-itp_support="<?= $itpSupport ?>"
         <?php if (!empty($promptParentId)): ?>
          data-prompt_parent_id="<?= $promptParentId ?>"

@@ -13,7 +13,9 @@ use Magento\Framework\App\RequestInterface;
 use Magento\Store\Model\StoreManagerInterface;
 use Magento\Framework\Controller\ResultInterface;
 use Magento\Framework\Controller\Result\JsonFactory;
+use Magento\Framework\Controller\Result\RedirectFactory;
 use Magento\Framework\Exception\{InputException, LocalizedException, NoSuchEntityException};
+use Magento\Framework\Message\ManagerInterface as MessageManagerInterface;
 use Magento\Framework\HTTP\PhpEnvironment\RemoteAddress;
 use Rollpix\GoogleOneTap\Model\RateLimiter;
 use Rollpix\GoogleOneTap\Model\SocialLoginService;
@@ -28,6 +30,8 @@ class Response implements CsrfAwareActionInterface
      * @param Session $customerSession
      * @param StoreManagerInterface $storeManager
      * @param JsonFactory $resultJsonFactory
+     * @param RedirectFactory $resultRedirectFactory
+     * @param MessageManagerInterface $messageManager
      * @param LoggerInterface $logger
      * @param RemoteAddress $remoteAddress
      * @param RateLimiter $rateLimiter
@@ -39,6 +43,8 @@ class Response implements CsrfAwareActionInterface
         private readonly Session $customerSession,
         private readonly StoreManagerInterface $storeManager,
         private readonly JsonFactory $resultJsonFactory,
+        private readonly RedirectFactory $resultRedirectFactory,
+        private readonly MessageManagerInterface $messageManager,
         private readonly LoggerInterface $logger,
         private readonly RemoteAddress $remoteAddress,
         private readonly RateLimiter $rateLimiter,
@@ -51,8 +57,11 @@ class Response implements CsrfAwareActionInterface
      */
     public function execute(): ResultInterface
     {
-        $result = $this->resultJsonFactory->create();
         $websiteId = (int)$this->storeManager->getStore()->getWebsiteId();
+
+        // Detect Google redirect/ITP flow (direct form POST, not XHR)
+        $isRedirectFlow = !$this->request->isXmlHttpRequest()
+            && isset($this->request->getPostValue()['credential']);
 
         try {
             // Security: Rate limiting to prevent brute force attacks
@@ -69,9 +78,14 @@ class Response implements CsrfAwareActionInterface
                         'time_window' => $timeWindow
                     ]);
 
-                    return $result->setData([
+                    $errorMsg = __('Too many authentication attempts. Please try again later.');
+                    if ($isRedirectFlow) {
+                        $this->messageManager->addErrorMessage($errorMsg);
+                        return $this->resultRedirectFactory->create()->setPath('/');
+                    }
+                    return $this->resultJsonFactory->create()->setData([
                         'success' => false,
-                        'message' => __('Too many authentication attempts. Please try again later.')
+                        'message' => $errorMsg
                     ]);
                 }
 
@@ -90,8 +104,9 @@ class Response implements CsrfAwareActionInterface
             }
 
             // Validate ID token - use getPostValue() directly since getParam() may not work with POST body
+            // Accept both 'id_token' (JS callback flow) and 'credential' (Google redirect/ITP flow)
             $postData = $this->request->getPostValue();
-            $idToken = $postData['id_token'] ?? null;
+            $idToken = $postData['id_token'] ?? $postData['credential'] ?? null;
 
             // Security: Validate token exists and length (prevent DoS attacks with huge payloads)
             if (!$idToken || strlen($idToken) > 2048) {
@@ -179,7 +194,10 @@ class Response implements CsrfAwareActionInterface
             // Log in customer
             $this->socialLoginService->loginCustomer($customer, $this->customerSession);
 
-            return $result->setData(['success' => true]);
+            if ($isRedirectFlow) {
+                return $this->resultRedirectFactory->create()->setPath('customer/account');
+            }
+            return $this->resultJsonFactory->create()->setData(['success' => true]);
 
         } catch (Exception $e) {
             // Log error for debugging
@@ -188,7 +206,11 @@ class Response implements CsrfAwareActionInterface
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return $result->setData([
+            if ($isRedirectFlow) {
+                $this->messageManager->addErrorMessage($e->getMessage());
+                return $this->resultRedirectFactory->create()->setPath('/');
+            }
+            return $this->resultJsonFactory->create()->setData([
                 'success' => false,
                 'message' => $e->getMessage()
             ]);
