@@ -78,6 +78,13 @@ class ModuleInfo extends Fieldset
             . $this->escapeHtml($repoUrl) . '</a></td>';
         $html .= '</tr>';
 
+        $manualUrl = $repoUrl . '/blob/master/manual.md';
+        $html .= '<tr>';
+        $html .= '<td style="padding: 5px 20px 5px 0; font-weight: 600;">' . $this->escapeHtml(__('User Manual')) . '</td>';
+        $html .= '<td style="padding: 5px 0;"><a href="' . $this->escapeUrl($manualUrl) . '" target="_blank" rel="noopener">'
+            . $this->escapeHtml(__('Open user manual')) . ' &#8599;</a></td>';
+        $html .= '</tr>';
+
         $html .= '</table>';
         $html .= '</td></tr>';
 
