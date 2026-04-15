@@ -10,7 +10,6 @@ use Google\Client as Google_Client;
 use Magento\Customer\Model\Session;
 use Magento\Framework\App\CsrfAwareActionInterface;
 use Magento\Framework\App\RequestInterface;
-use Magento\Framework\DataObject;
 use Magento\Framework\Controller\ResultInterface;
 use Magento\Framework\Controller\Result\JsonFactory;
 use Magento\Framework\Controller\Result\RedirectFactory;
@@ -298,11 +297,11 @@ class Response implements CsrfAwareActionInterface
     {
         $pendingRegistration = $exception->getPendingRegistrationData();
         $this->customerSession->setData(self::PENDING_REGISTRATION_SESSION_KEY, $pendingRegistration);
-        $this->customerSession->setCustomerFormData(new DataObject([
+        $this->customerSession->setCustomerFormData([
             'firstname' => $pendingRegistration['firstname'] ?? '',
             'lastname' => $pendingRegistration['lastname'] ?? '',
             'email' => $pendingRegistration['email'] ?? ''
-        ]));
+        ]);
 
         return $this->storeManager->getStore()->getUrl('customer/account/create');
     }
