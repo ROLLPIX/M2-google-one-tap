@@ -17,12 +17,14 @@ use Magento\Framework\Controller\Result\RedirectFactory;
 use Magento\Framework\Exception\{InputException, LocalizedException, NoSuchEntityException};
 use Magento\Framework\Message\ManagerInterface as MessageManagerInterface;
 use Magento\Framework\HTTP\PhpEnvironment\RemoteAddress;
+use Rollpix\GoogleOneTap\Exception\RegistrationCompletionRequiredException;
 use Rollpix\GoogleOneTap\Model\RateLimiter;
 use Rollpix\GoogleOneTap\Model\SocialLoginService;
 use Psr\Log\LoggerInterface;
 
 class Response implements CsrfAwareActionInterface
 {
+    private const PENDING_REGISTRATION_SESSION_KEY = 'rollpix_google_onetap_pending_registration';
 
     /**
      * @param Data $config
@@ -192,6 +194,7 @@ class Response implements CsrfAwareActionInterface
             );
 
             // Log in customer
+            $this->clearPendingRegistration();
             $this->socialLoginService->loginCustomer($customer, $this->customerSession);
 
             if ($isRedirectFlow) {
@@ -199,6 +202,25 @@ class Response implements CsrfAwareActionInterface
             }
             return $this->resultJsonFactory->create()->setData(['success' => true]);
 
+        } catch (RegistrationCompletionRequiredException $e) {
+            $redirectUrl = $this->storePendingRegistration($e);
+            $this->messageManager->addNoticeMessage($e->getMessage());
+
+            $this->logger->info('Google One Tap requires account completion', [
+                'email' => $email ?? null,
+                'redirect_url' => $redirectUrl
+            ]);
+
+            if ($isRedirectFlow) {
+                return $this->resultRedirectFactory->create()->setUrl($redirectUrl);
+            }
+
+            return $this->resultJsonFactory->create()->setData([
+                'success' => false,
+                'requires_completion' => true,
+                'message' => $e->getMessage(),
+                'redirect_url' => $redirectUrl
+            ]);
         } catch (Exception $e) {
             // Log error for debugging
             $this->logger->error('Google One Tap authentication failed', [
@@ -235,5 +257,23 @@ class Response implements CsrfAwareActionInterface
     public function validateForCsrf(RequestInterface $request): ?bool
     {
         return true;
+    }
+
+    private function storePendingRegistration(RegistrationCompletionRequiredException $exception): string
+    {
+        $pendingRegistration = $exception->getPendingRegistrationData();
+        $this->customerSession->setData(self::PENDING_REGISTRATION_SESSION_KEY, $pendingRegistration);
+        $this->customerSession->setCustomerFormData([
+            'firstname' => $pendingRegistration['firstname'] ?? '',
+            'lastname' => $pendingRegistration['lastname'] ?? '',
+            'email' => $pendingRegistration['email'] ?? ''
+        ]);
+
+        return $this->storeManager->getStore()->getUrl('customer/account/create');
+    }
+
+    private function clearPendingRegistration(): void
+    {
+        $this->customerSession->unsData(self::PENDING_REGISTRATION_SESSION_KEY);
     }
 }
