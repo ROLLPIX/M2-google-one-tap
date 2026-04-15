@@ -14,15 +14,37 @@ use Rollpix\GoogleOneTap\Model\Config\Data;
 
 class SocialLoginService
 {
+    private CustomerFactory $customerFactory;
+
+    private CustomerInterfaceFactory $customerInterfaceFactory;
+
+    private CustomerRepositoryInterface $customerRepositoryInterface;
+
+    private Random $mathRandom;
+
+    private EncryptorInterface $encryptor;
+
+    private LoggerInterface $logger;
+
+    private Data $config;
+
     public function __construct(
-        private readonly CustomerFactory $customerFactory,
-        private readonly CustomerInterfaceFactory $customerInterfaceFactory,
-        private readonly CustomerRepositoryInterface $customerRepositoryInterface,
-        private readonly Random $mathRandom,
-        private readonly EncryptorInterface $encryptor,
-        private readonly LoggerInterface $logger,
-        private readonly Data $config
-    ) {}
+        CustomerFactory $customerFactory,
+        CustomerInterfaceFactory $customerInterfaceFactory,
+        CustomerRepositoryInterface $customerRepositoryInterface,
+        Random $mathRandom,
+        EncryptorInterface $encryptor,
+        LoggerInterface $logger,
+        Data $config
+    ) {
+        $this->customerFactory = $customerFactory;
+        $this->customerInterfaceFactory = $customerInterfaceFactory;
+        $this->customerRepositoryInterface = $customerRepositoryInterface;
+        $this->mathRandom = $mathRandom;
+        $this->encryptor = $encryptor;
+        $this->logger = $logger;
+        $this->config = $config;
+    }
 
     /**
      * Find existing customer by email or create a new one

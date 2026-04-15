@@ -23,6 +23,27 @@ use Psr\Log\LoggerInterface;
 
 class Response implements CsrfAwareActionInterface
 {
+    private Data $config;
+
+    private RequestInterface $request;
+
+    private Session $customerSession;
+
+    private StoreManagerInterface $storeManager;
+
+    private JsonFactory $resultJsonFactory;
+
+    private RedirectFactory $resultRedirectFactory;
+
+    private MessageManagerInterface $messageManager;
+
+    private LoggerInterface $logger;
+
+    private RemoteAddress $remoteAddress;
+
+    private RateLimiter $rateLimiter;
+
+    private SocialLoginService $socialLoginService;
 
     /**
      * @param Data $config
@@ -38,18 +59,30 @@ class Response implements CsrfAwareActionInterface
      * @param SocialLoginService $socialLoginService
      */
     public function __construct(
-        private readonly Data $config,
-        private readonly RequestInterface $request,
-        private readonly Session $customerSession,
-        private readonly StoreManagerInterface $storeManager,
-        private readonly JsonFactory $resultJsonFactory,
-        private readonly RedirectFactory $resultRedirectFactory,
-        private readonly MessageManagerInterface $messageManager,
-        private readonly LoggerInterface $logger,
-        private readonly RemoteAddress $remoteAddress,
-        private readonly RateLimiter $rateLimiter,
-        private readonly SocialLoginService $socialLoginService
-    ) {}
+        Data $config,
+        RequestInterface $request,
+        Session $customerSession,
+        StoreManagerInterface $storeManager,
+        JsonFactory $resultJsonFactory,
+        RedirectFactory $resultRedirectFactory,
+        MessageManagerInterface $messageManager,
+        LoggerInterface $logger,
+        RemoteAddress $remoteAddress,
+        RateLimiter $rateLimiter,
+        SocialLoginService $socialLoginService
+    ) {
+        $this->config = $config;
+        $this->request = $request;
+        $this->customerSession = $customerSession;
+        $this->storeManager = $storeManager;
+        $this->resultJsonFactory = $resultJsonFactory;
+        $this->resultRedirectFactory = $resultRedirectFactory;
+        $this->messageManager = $messageManager;
+        $this->logger = $logger;
+        $this->remoteAddress = $remoteAddress;
+        $this->rateLimiter = $rateLimiter;
+        $this->socialLoginService = $socialLoginService;
+    }
 
     /**
      * @return ResultInterface

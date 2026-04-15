@@ -12,6 +12,11 @@ use Rollpix\GoogleOneTap\Model\Config\Data;
 
 class GoogleSignInButton extends Template
 {
+    private Data $config;
+
+    private AuthContext $authContext;
+
+    private ModuleManager $moduleManager;
 
     /**
      * @param Template\Context $context
@@ -22,11 +27,14 @@ class GoogleSignInButton extends Template
      */
     public function __construct(
         Template\Context $context,
-        private readonly Data $config,
-        private readonly AuthContext $authContext,
-        private readonly ModuleManager $moduleManager,
+        Data $config,
+        AuthContext $authContext,
+        ModuleManager $moduleManager,
         array $data = []
     ) {
+        $this->config = $config;
+        $this->authContext = $authContext;
+        $this->moduleManager = $moduleManager;
         parent::__construct($context, $data);
     }
 
@@ -150,11 +158,15 @@ class GoogleSignInButton extends Template
     public function getButtonPosition(): string
     {
         $pageType = $this->getData('page_type') ?: '';
-        return match ($pageType) {
-            'login' => $this->config->getButtonLoginPosition(),
-            'register' => $this->config->getButtonRegisterPosition(),
-            'checkout' => $this->config->getButtonCheckoutPosition(),
-            default => 'below',
-        };
+        switch ($pageType) {
+            case 'login':
+                return $this->config->getButtonLoginPosition();
+            case 'register':
+                return $this->config->getButtonRegisterPosition();
+            case 'checkout':
+                return $this->config->getButtonCheckoutPosition();
+            default:
+                return 'below';
+        }
     }
 }
