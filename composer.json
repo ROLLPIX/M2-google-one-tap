@@ -19,7 +19,8 @@
     "require": {
         "php": "^7.4 || ^8.0",
         "google/apiclient": ">=2.15.4 <2.17",
-        "google/auth": ">=1.33 <1.38"
+        "google/auth": ">=1.33 <1.38",
+        "psr/cache": "^1.0"
     },
     "autoload": {
     "files": [ "registration.php" ],
