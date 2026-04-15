@@ -8,8 +8,10 @@ use Magento\Customer\Api\Data\CustomerInterfaceFactory;
 use Magento\Customer\Model\CustomerFactory;
 use Magento\Customer\Model\Session;
 use Magento\Framework\Encryption\EncryptorInterface;
+use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Math\Random;
 use Psr\Log\LoggerInterface;
+use Rollpix\GoogleOneTap\Exception\RegistrationCompletionRequiredException;
 use Rollpix\GoogleOneTap\Model\Config\Data;
 
 class SocialLoginService
@@ -84,7 +86,28 @@ class SocialLoginService
             $newCustomer->setEmail($email);
             $newCustomer->setFirstname($firstName);
             $newCustomer->setLastname($lastName);
-            $this->customerRepositoryInterface->save($newCustomer, $passwordHash);
+            try {
+                $this->customerRepositoryInterface->save($newCustomer, $passwordHash);
+            } catch (LocalizedException $e) {
+                $customer = $this->customerFactory->create();
+                $customer->setWebsiteId($websiteId);
+                $customer->loadByEmail($email);
+
+                if ($customer->getId()) {
+                    $this->markProviderLinked($customer, $provider, $email);
+                    return $customer;
+                }
+
+                throw new RegistrationCompletionRequiredException(
+                    $email,
+                    $firstName,
+                    $lastName,
+                    $websiteId,
+                    $provider,
+                    null,
+                    $e
+                );
+            }
 
             // Reload customer for session
             $customer = $this->customerFactory->create();
@@ -157,5 +180,18 @@ class SocialLoginService
         $customer->setData($provider . '_linked_at', date('Y-m-d H:i:s'));
         $customer->setData($provider . '_email', $email);
         $customer->save();
+    }
+
+    public function markProviderLinkedByCustomerId(
+        int $customerId,
+        string $provider,
+        string $email
+    ): void {
+        $customer = $this->customerFactory->create()->load($customerId);
+        if (!$customer->getId()) {
+            return;
+        }
+
+        $this->markProviderLinked($customer, $provider, $email);
     }
 }
