@@ -133,7 +133,8 @@ bin/magento module:status Rollpix_GoogleOneTap
 ### Step 2: Enable Google Identity API
 
 1. Go to **APIs & Services > Library**
-2. Search for **"Google Identity Services"**
+2. Search for **"Google Identity Services"**  UPDATE (ahora se llama "Identity Toolkit API")
+
 3. Click **"Enable"**
 
 ### Step 3: Configure OAuth Consent Screen
