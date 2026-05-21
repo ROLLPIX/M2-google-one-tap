@@ -1,0 +1,42 @@
+<?php
+/**
+ * @var \Rollpix\GoogleOneTap\Block\Customer\Account\RegisterCompletion $block
+ * @var \Magento\Framework\Escaper $escaper
+ */
+
+// Only act when the form is being shown to complete a pending Google sign-up
+if (!$block->isPendingGoogleRegistration()) {
+    return;
+}
+?>
+
+<!-- Google One Tap: complete registration without a password -->
+<style>
+    .form-create-account .field.password,
+    .form-create-account .field.confirmation,
+    #form-validate .field.password,
+    #form-validate .field.confirmation {
+        display: none !important;
+    }
+</style>
+
+<script>
+    require(['jquery', 'domReady!'], function ($) {
+        var $form = $('form.form-create-account, #form-validate').first();
+        if (!$form.length) {
+            return;
+        }
+
+        var $passwordFields = $form.find('.field.password, .field.confirmation');
+        $passwordFields.hide();
+
+        // Drop validation rules and disable the inputs so the passwordless Google flow can submit.
+        // The server side fills a random password for this account (see PasswordlessRegistration plugin).
+        $passwordFields.find('input').each(function () {
+            $(this)
+                .removeAttr('data-validate')
+                .removeAttr('required')
+                .prop('disabled', true);
+        });
+    });
+</script>
