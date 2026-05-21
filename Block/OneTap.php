@@ -11,6 +11,9 @@ use Rollpix\GoogleOneTap\Model\Config\Data;
 
 class OneTap extends Template
 {
+    private Data $config;
+
+    private AuthContext $authContext;
 
     /**
      * @param Template\Context $context
@@ -20,10 +23,12 @@ class OneTap extends Template
      */
     public function __construct(
         Template\Context $context,
-        private readonly Data $config,
-        private readonly AuthContext $authContext,
+        Data $config,
+        AuthContext $authContext,
         array $data = []
     ) {
+        $this->config = $config;
+        $this->authContext = $authContext;
         parent::__construct($context, $data);
     }
 

@@ -13,11 +13,21 @@ class CompletePendingRegistration implements ObserverInterface
 {
     private const SESSION_KEY = 'rollpix_google_onetap_pending_registration';
 
+    private Session $customerSession;
+
+    private SocialLoginService $socialLoginService;
+
+    private LoggerInterface $logger;
+
     public function __construct(
-        private readonly Session $customerSession,
-        private readonly SocialLoginService $socialLoginService,
-        private readonly LoggerInterface $logger
-    ) {}
+        Session $customerSession,
+        SocialLoginService $socialLoginService,
+        LoggerInterface $logger
+    ) {
+        $this->customerSession = $customerSession;
+        $this->socialLoginService = $socialLoginService;
+        $this->logger = $logger;
+    }
 
     public function execute(Observer $observer): void
     {

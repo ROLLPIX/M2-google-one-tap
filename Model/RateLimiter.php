@@ -15,14 +15,21 @@ class RateLimiter
     private const DEFAULT_MAX_ATTEMPTS = 10;
     private const DEFAULT_TIME_WINDOW = 60; // seconds
 
+    private CacheInterface $cache;
+
+    private SerializerInterface $serializer;
+
     /**
      * @param CacheInterface $cache
      * @param SerializerInterface $serializer
      */
     public function __construct(
-        private readonly CacheInterface $cache,
-        private readonly SerializerInterface $serializer
-    ) {}
+        CacheInterface $cache,
+        SerializerInterface $serializer
+    ) {
+        $this->cache = $cache;
+        $this->serializer = $serializer;
+    }
 
     /**
      * Check if IP address has exceeded rate limit

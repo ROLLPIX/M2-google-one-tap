@@ -9,12 +9,22 @@ use Magento\Framework\Phrase;
 
 class RegistrationCompletionRequiredException extends LocalizedException
 {
+    private string $email;
+
+    private string $firstName;
+
+    private string $lastName;
+
+    private int $websiteId;
+
+    private string $provider;
+
     public function __construct(
-        private readonly string $email,
-        private readonly string $firstName,
-        private readonly string $lastName,
-        private readonly int $websiteId,
-        private readonly string $provider,
+        string $email,
+        string $firstName,
+        string $lastName,
+        int $websiteId,
+        string $provider,
         ?Phrase $phrase = null,
         ?Exception $cause = null
     ) {
@@ -22,6 +32,12 @@ class RegistrationCompletionRequiredException extends LocalizedException
             $phrase ?: __('Complete the missing account details to finish registration with Google.'),
             $cause
         );
+
+        $this->email = $email;
+        $this->firstName = $firstName;
+        $this->lastName = $lastName;
+        $this->websiteId = $websiteId;
+        $this->provider = $provider;
     }
 
     /**

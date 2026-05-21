@@ -15,6 +15,8 @@ class GoogleLinkedNotice extends Template
      */
     private const TIME_THRESHOLD_SECONDS = 60;
 
+    private Session $customerSession;
+
     /**
      * @param Context $context
      * @param Session $customerSession
@@ -22,9 +24,10 @@ class GoogleLinkedNotice extends Template
      */
     public function __construct(
         Context $context,
-        private readonly Session $customerSession,
+        Session $customerSession,
         array $data = []
     ) {
+        $this->customerSession = $customerSession;
         parent::__construct($context, $data);
     }
 

@@ -11,15 +11,21 @@ use Rollpix\GoogleOneTap\Model\API\DataInterface as API;
 
 class Data implements API
 {
+    private ScopeConfigInterface $scopeConfig;
+
+    private EncryptorInterface $encryptor;
 
     /**
      * @param ScopeConfigInterface $scopeConfig
      * @param EncryptorInterface $encryptor
      */
     public function __construct(
-        private readonly ScopeConfigInterface $scopeConfig,
-        private readonly EncryptorInterface $encryptor
-    ) {}
+        ScopeConfigInterface $scopeConfig,
+        EncryptorInterface $encryptor
+    ) {
+        $this->scopeConfig = $scopeConfig;
+        $this->encryptor = $encryptor;
+    }
 
     /**
      * Get Google client ID from Config

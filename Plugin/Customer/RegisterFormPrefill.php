@@ -11,9 +11,13 @@ class RegisterFormPrefill
 {
     private const SESSION_KEY = 'rollpix_google_onetap_pending_registration';
 
+    private Session $customerSession;
+
     public function __construct(
-        private readonly Session $customerSession
-    ) {}
+        Session $customerSession
+    ) {
+        $this->customerSession = $customerSession;
+    }
 
     public function afterGetFormData(Register $subject, DataObject $result): DataObject
     {

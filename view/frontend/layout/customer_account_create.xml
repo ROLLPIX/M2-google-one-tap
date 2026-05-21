@@ -11,6 +11,9 @@
                     <argument name="page_type" xsi:type="string">register</argument>
                 </arguments>
             </block>
+            <block class="Rollpix\GoogleOneTap\Block\Customer\Account\RegisterCompletion"
+                   name="rollpix-google-onetap-register-completion"
+                   template="Rollpix_GoogleOneTap::customer/account/register_completion.phtml" />
         </referenceContainer>
     </body>
 </page>

@@ -16,6 +16,10 @@ class ModuleInfo extends Fieldset
     private const MODULE_NAME = 'Rollpix_GoogleOneTap';
     private const REPO_URL = 'https://github.com/ROLLPIX/M2-google-one-tap';
 
+    private ComponentRegistrar $componentRegistrar;
+
+    private ReadFactory $readFactory;
+
     /**
      * @param Context $context
      * @param Session $authSession
@@ -28,10 +32,12 @@ class ModuleInfo extends Fieldset
         Context $context,
         Session $authSession,
         Js $jsHelper,
-        private readonly ComponentRegistrar $componentRegistrar,
-        private readonly ReadFactory $readFactory,
+        ComponentRegistrar $componentRegistrar,
+        ReadFactory $readFactory,
         array $data = []
     ) {
+        $this->componentRegistrar = $componentRegistrar;
+        $this->readFactory = $readFactory;
         parent::__construct($context, $authSession, $jsHelper, $data);
     }
 

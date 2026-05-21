@@ -1,0 +1,47 @@
+<?php
+/**
+ * @var \Rollpix\GoogleOneTap\Block\Customer\Account\RegisterCompletion $block
+ * @var \Magento\Framework\Escaper $escaper
+ */
+
+// Only act when the form is being shown to complete a pending Google sign-up
+if (!$block->isPendingGoogleRegistration()) {
+    return;
+}
+?>
+
+<!-- Google One Tap: complete registration without a password -->
+<style>
+    .field.password,
+    .field.confirmation,
+    .field.password-info,
+    .password-strength-meter,
+    .field.choice.show-password {
+        display: none !important;
+    }
+</style>
+
+<script>
+    require(['jquery', 'domReady!'], function ($) {
+        // Target password inputs by name so it works regardless of theme markup.
+        var $inputs = $('input[name="password"], input[name="password_confirmation"]');
+
+        $inputs.each(function () {
+            var $input = $(this);
+
+            // Drop validation rules and disable the inputs so the passwordless Google flow can submit.
+            // The server side fills a random password for this account (see PasswordlessRegistration plugin).
+            $input
+                .removeAttr('data-validate')
+                .removeAttr('required')
+                .prop('disabled', true);
+
+            // Hide the whole field row that wraps the input.
+            $input.closest('.field').hide();
+        });
+
+        // Hide the "show password" toggle and the password strength meter if present.
+        $('.password-strength-meter').closest('.field').hide();
+        $('input[name="show_password"], [data-role="show-password"]').closest('.field').hide();
+    });
+</script>

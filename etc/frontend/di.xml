@@ -5,4 +5,8 @@
         <plugin name="rollpix_google_onetap_register_form_prefill"
                 type="Rollpix\GoogleOneTap\Plugin\Customer\RegisterFormPrefill" />
     </type>
+    <type name="Magento\Customer\Controller\Account\CreatePost">
+        <plugin name="rollpix_google_onetap_passwordless_registration"
+                type="Rollpix\GoogleOneTap\Plugin\Customer\PasswordlessRegistration" />
+    </type>
 </config>

@@ -11,16 +11,26 @@ use Magento\Eav\Model\Entity\Attribute\SetFactory as AttributeSetFactory;
 
 class AddGoogleOneTapEmailAttribute implements DataPatchInterface
 {
+    private ModuleDataSetupInterface $moduleDataSetup;
+
+    private CustomerSetupFactory $customerSetupFactory;
+
+    private AttributeSetFactory $attributeSetFactory;
+
     /**
      * @param ModuleDataSetupInterface $moduleDataSetup
      * @param CustomerSetupFactory $customerSetupFactory
      * @param AttributeSetFactory $attributeSetFactory
      */
     public function __construct(
-        private readonly ModuleDataSetupInterface $moduleDataSetup,
-        private readonly CustomerSetupFactory $customerSetupFactory,
-        private readonly AttributeSetFactory $attributeSetFactory
-    ) {}
+        ModuleDataSetupInterface $moduleDataSetup,
+        CustomerSetupFactory $customerSetupFactory,
+        AttributeSetFactory $attributeSetFactory
+    ) {
+        $this->moduleDataSetup = $moduleDataSetup;
+        $this->customerSetupFactory = $customerSetupFactory;
+        $this->attributeSetFactory = $attributeSetFactory;
+    }
 
     /**
      * @inheritDoc
