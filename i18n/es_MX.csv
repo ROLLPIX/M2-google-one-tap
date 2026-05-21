@@ -4,6 +4,7 @@
 "Authentication token has expired. Please try again.","El token de autenticación ha expirado. Por favor, intente nuevamente."
 "Email not verified by Google.","Correo electrónico no verificado por Google."
 "Invalid or missing email address.","Dirección de correo electrónico inválida o faltante."
+"Complete the missing account details to finish registration with Google.","Completa los datos faltantes de tu cuenta para finalizar el registro con Google."
 "Google One Tap authentication failed","Falló la autenticación de Google One Tap"
 "Google Client ID is not configured.","El ID de cliente de Google no está configurado."
 "Google One Tap Sign-in","Inicio de sesión Google One Tap"

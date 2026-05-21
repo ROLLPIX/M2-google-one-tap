@@ -12,31 +12,36 @@ if (!$block->isPendingGoogleRegistration()) {
 
 <!-- Google One Tap: complete registration without a password -->
 <style>
-    .form-create-account .field.password,
-    .form-create-account .field.confirmation,
-    #form-validate .field.password,
-    #form-validate .field.confirmation {
+    .field.password,
+    .field.confirmation,
+    .field.password-info,
+    .password-strength-meter,
+    .field.choice.show-password {
         display: none !important;
     }
 </style>
 
 <script>
     require(['jquery', 'domReady!'], function ($) {
-        var $form = $('form.form-create-account, #form-validate').first();
-        if (!$form.length) {
-            return;
-        }
+        // Target password inputs by name so it works regardless of theme markup.
+        var $inputs = $('input[name="password"], input[name="password_confirmation"]');
 
-        var $passwordFields = $form.find('.field.password, .field.confirmation');
-        $passwordFields.hide();
+        $inputs.each(function () {
+            var $input = $(this);
 
-        // Drop validation rules and disable the inputs so the passwordless Google flow can submit.
-        // The server side fills a random password for this account (see PasswordlessRegistration plugin).
-        $passwordFields.find('input').each(function () {
-            $(this)
+            // Drop validation rules and disable the inputs so the passwordless Google flow can submit.
+            // The server side fills a random password for this account (see PasswordlessRegistration plugin).
+            $input
                 .removeAttr('data-validate')
                 .removeAttr('required')
                 .prop('disabled', true);
+
+            // Hide the whole field row that wraps the input.
+            $input.closest('.field').hide();
         });
+
+        // Hide the "show password" toggle and the password strength meter if present.
+        $('.password-strength-meter').closest('.field').hide();
+        $('input[name="show_password"], [data-role="show-password"]').closest('.field').hide();
     });
 </script>
