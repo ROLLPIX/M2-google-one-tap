@@ -4,7 +4,7 @@
     "keywords": ["magento", "magento2 extension", "magento 2 extension", "extension", "module", "magento2 module", "magento 2 module"],
     "homepage": "https://github.com/ROLLPIX/M2-google-one-tap",
     "type": "magento2-module",
-    "version": "2.1.8",
+    "version": "2.1.9",
     "license": [
         "OSL-3.0",
         "AFL-3.0"
@@ -18,13 +18,7 @@
     ],
     "require": {
         "php": "^7.4 || ^8.0",
-        "firebase/php-jwt": "~6.10.0",
-        "google/apiclient": ">=2.15.4 <2.17",
-        "google/auth": ">=1.33 <1.38",
-        "monolog/monolog": "^2.9",
-        "psr/cache": "^1.0",
-        "psr/log": "^1.1.4",
-        "symfony/deprecation-contracts": "^2.5"
+        "google/apiclient": "^2.15"
     },
     "autoload": {
     "files": [ "registration.php" ],
