@@ -6,6 +6,7 @@ namespace Rollpix\GoogleOneTap\Model;
 use Magento\Customer\Api\CustomerRepositoryInterface;
 use Magento\Customer\Api\Data\CustomerInterfaceFactory;
 use Magento\Customer\Model\CustomerFactory;
+use Magento\Customer\Model\ResourceModel\Customer\CollectionFactory as CustomerCollectionFactory;
 use Magento\Customer\Model\Session;
 use Magento\Framework\Encryption\EncryptorInterface;
 use Magento\Framework\Exception\LocalizedException;
@@ -30,6 +31,8 @@ class SocialLoginService
 
     private Data $config;
 
+    private CustomerCollectionFactory $customerCollectionFactory;
+
     public function __construct(
         CustomerFactory $customerFactory,
         CustomerInterfaceFactory $customerInterfaceFactory,
@@ -37,7 +40,8 @@ class SocialLoginService
         Random $mathRandom,
         EncryptorInterface $encryptor,
         LoggerInterface $logger,
-        Data $config
+        Data $config,
+        CustomerCollectionFactory $customerCollectionFactory
     ) {
         $this->customerFactory = $customerFactory;
         $this->customerInterfaceFactory = $customerInterfaceFactory;
@@ -46,6 +50,7 @@ class SocialLoginService
         $this->encryptor = $encryptor;
         $this->logger = $logger;
         $this->config = $config;
+        $this->customerCollectionFactory = $customerCollectionFactory;
     }
 
     /**
@@ -65,9 +70,19 @@ class SocialLoginService
         int $websiteId,
         string $provider
     ): \Magento\Customer\Model\Customer {
-        $customer = $this->customerFactory->create();
-        $customer->setWebsiteId($websiteId);
-        $customer->loadByEmail($email);
+        // P4: resolve by the stored provider identity first. The Google email is
+        // stable per Google account, but the customer's login email can change
+        // (account edit / admin / REST). Looking up by `<provider>_email` keeps a
+        // re-login bound to the original account instead of spawning a duplicate
+        // one when the two emails have diverged. Falls through to email match for
+        // first-time links and brand-new customers.
+        $customer = $this->findByProviderEmail($email, $websiteId, $provider);
+
+        if ($customer === null) {
+            $customer = $this->customerFactory->create();
+            $customer->setWebsiteId($websiteId);
+            $customer->loadByEmail($email);
+        }
 
         if (!$customer->getId()) {
             if ($this->config->isDebugLoggingEnabled()) {
@@ -143,6 +158,52 @@ class SocialLoginService
                     ]);
                 }
             }
+        }
+
+        return $customer;
+    }
+
+    /**
+     * Find a customer previously linked to this provider identity (provider email),
+     * scoped to the website. Returns a fully loaded model or null when none exists.
+     *
+     * @param string $email Provider (e.g. Google) email captured at link time
+     * @param int $websiteId
+     * @param string $provider Provider identifier (e.g. 'google_onetap')
+     * @return \Magento\Customer\Model\Customer|null
+     */
+    private function findByProviderEmail(
+        string $email,
+        int $websiteId,
+        string $provider
+    ): ?\Magento\Customer\Model\Customer {
+        $collection = $this->customerCollectionFactory->create();
+        $collection->addAttributeToFilter($provider . '_email', ['eq' => $email])
+            ->addFieldToFilter('website_id', $websiteId)
+            ->setOrder('entity_id', 'ASC')
+            ->setPageSize(1);
+
+        $match = $collection->getFirstItem();
+        if (!$match->getId()) {
+            return null;
+        }
+
+        // Reload as a full Customer model so the session/login path behaves
+        // exactly as with loadByEmail (collection items are partially loaded).
+        $customer = $this->customerFactory->create();
+        $customer->setWebsiteId($websiteId);
+        $customer->load((int)$match->getId());
+
+        if (!$customer->getId()) {
+            return null;
+        }
+
+        if ($this->config->isDebugLoggingEnabled()) {
+            $this->logger->info("Social Login ($provider): Matched existing customer by provider identity", [
+                'customer_id' => $customer->getId(),
+                'provider_email' => $email,
+                'login_email' => $customer->getEmail()
+            ]);
         }
 
         return $customer;
