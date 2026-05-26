@@ -4,9 +4,9 @@ declare(strict_types=1);
 namespace Rollpix\GoogleOneTap\Plugin\Customer;
 
 use Magento\Customer\Controller\Account\CreatePost;
-use Magento\Customer\Model\Session;
 use Magento\Framework\App\RequestInterface;
 use Magento\Framework\Math\Random;
+use Rollpix\GoogleOneTap\Model\PendingRegistration;
 
 /**
  * Fills a random password when the register form is submitted to complete a pending Google sign-up.
@@ -17,37 +17,33 @@ use Magento\Framework\Math\Random;
  */
 class PasswordlessRegistration
 {
-    private const SESSION_KEY = 'rollpix_google_onetap_pending_registration';
-
-    private Session $customerSession;
+    private PendingRegistration $pendingRegistration;
 
     private RequestInterface $request;
 
     private Random $mathRandom;
 
-    /**
-     * @param Session $customerSession
-     * @param RequestInterface $request
-     * @param Random $mathRandom
-     */
     public function __construct(
-        Session $customerSession,
+        PendingRegistration $pendingRegistration,
         RequestInterface $request,
         Random $mathRandom
     ) {
-        $this->customerSession = $customerSession;
+        $this->pendingRegistration = $pendingRegistration;
         $this->request = $request;
         $this->mathRandom = $mathRandom;
     }
 
-    /**
-     * @param CreatePost $subject
-     * @return void
-     */
     public function beforeExecute(CreatePost $subject): void
     {
-        $pendingRegistration = $this->customerSession->getData(self::SESSION_KEY);
-        if (!is_array($pendingRegistration) || empty($pendingRegistration['provider'])) {
+        $pendingRegistration = $this->pendingRegistration->get();
+        if ($pendingRegistration === null) {
+            return;
+        }
+
+        // Honour the explicit "switch to native" opt-out from the register form
+        // so a user typing their own password is never overridden.
+        if ((string)$this->request->getParam('_onetap_native_optout') === '1') {
+            $this->pendingRegistration->clear();
             return;
         }
 
@@ -67,8 +63,6 @@ class PasswordlessRegistration
     /**
      * Build a random password that satisfies Magento's default strength requirements
      * (minimum length and at least 3 character classes).
-     *
-     * @return string
      */
     private function generatePassword(): string
     {

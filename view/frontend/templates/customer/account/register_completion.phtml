@@ -8,40 +8,106 @@
 if (!$block->isPendingGoogleRegistration()) {
     return;
 }
+
+$pendingEmail = $block->getPendingEmail();
 ?>
 
 <!-- Google One Tap: complete registration without a password -->
 <style>
+    /* No-FOUC safety net before the JS runs. Not !important so the escape hatch
+       (jQuery .show()) can re-display the rows when the user opts out. */
     .field.password,
     .field.confirmation,
     .field.password-info,
     .password-strength-meter,
     .field.choice.show-password {
-        display: none !important;
+        display: none;
+    }
+
+    .rollpix-onetap-switch-native {
+        display: block;
+        margin: 0.5rem 0 1rem;
+        font-size: 0.95em;
     }
 </style>
 
+<p class="rollpix-onetap-switch-native">
+    <a href="#" data-role="rollpix-onetap-switch-native">
+        <?= $escaper->escapeHtml(__('Registrarme con otro email (sin Google)')) ?>
+    </a>
+</p>
+
 <script>
     require(['jquery', 'domReady!'], function ($) {
-        // Target password inputs by name so it works regardless of theme markup.
-        var $inputs = $('input[name="password"], input[name="password_confirmation"]');
+        var pendingEmail = <?= /* @noEscape */ json_encode(strtolower(trim($pendingEmail))) ?>;
+        var $form = $('#form-validate').first();
+        var $emailInput = $form.find('input[name="email"]');
+        var $passwordInputs = $form.find('input[name="password"], input[name="password_confirmation"]');
+        var $passwordFields = $passwordInputs.closest('.field');
+        var $showPasswordRow = $form.find('input[name="show_password"], [data-role="show-password"]').closest('.field');
+        var $strengthMeter = $form.find('.password-strength-meter').closest('.field');
+        var $switchLink = $('a[data-role="rollpix-onetap-switch-native"]');
 
-        $inputs.each(function () {
+        // Snapshot the original validation rules so we can restore them when the user
+        // opts out of the Google completion flow.
+        var originalValidations = [];
+        $passwordInputs.each(function () {
             var $input = $(this);
-
-            // Drop validation rules and disable the inputs so the passwordless Google flow can submit.
-            // The server side fills a random password for this account (see PasswordlessRegistration plugin).
+            originalValidations.push({
+                el: $input,
+                validate: $input.attr('data-validate'),
+                required: $input.attr('required')
+            });
+            // Default state: passwordless Google completion → no validation, disabled (won't submit).
             $input
                 .removeAttr('data-validate')
                 .removeAttr('required')
                 .prop('disabled', true);
-
-            // Hide the whole field row that wraps the input.
             $input.closest('.field').hide();
         });
 
-        // Hide the "show password" toggle and the password strength meter if present.
-        $('.password-strength-meter').closest('.field').hide();
-        $('input[name="show_password"], [data-role="show-password"]').closest('.field').hide();
+        $strengthMeter.hide();
+        $showPasswordRow.hide();
+
+        function enterNativeMode(opts) {
+            opts = opts || {};
+            // Restore validation, re-enable inputs, show the fields.
+            originalValidations.forEach(function (entry) {
+                if (entry.validate) {
+                    entry.el.attr('data-validate', entry.validate);
+                }
+                if (entry.required) {
+                    entry.el.attr('required', entry.required);
+                }
+                entry.el.prop('disabled', false);
+                entry.el.closest('.field').show();
+            });
+            $strengthMeter.show();
+            $showPasswordRow.show();
+            $switchLink.closest('p').hide();
+
+            if (opts.clearEmail) {
+                $emailInput.val('').trigger('focus');
+            }
+
+            // Mark the form so the server-side plugin knows the user opted out.
+            // The plugin already checks email mismatch, but this is belt-and-suspenders
+            // in case the user re-types the same Google email manually.
+            $form.append('<input type="hidden" name="_onetap_native_optout" value="1">');
+        }
+
+        // Explicit opt-out link
+        $switchLink.on('click', function (e) {
+            e.preventDefault();
+            enterNativeMode({ clearEmail: true });
+        });
+
+        // Implicit opt-out: user edits the email to something other than the pending one.
+        $emailInput.on('input change blur', function () {
+            var current = ($emailInput.val() || '').toLowerCase().trim();
+            if (pendingEmail && current && current !== pendingEmail) {
+                enterNativeMode({ clearEmail: false });
+            }
+        });
     });
 </script>

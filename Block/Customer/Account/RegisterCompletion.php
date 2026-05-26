@@ -3,27 +3,20 @@ declare(strict_types=1);
 
 namespace Rollpix\GoogleOneTap\Block\Customer\Account;
 
-use Magento\Customer\Model\Session;
 use Magento\Framework\View\Element\Template;
 use Magento\Framework\View\Element\Template\Context;
+use Rollpix\GoogleOneTap\Model\PendingRegistration;
 
 class RegisterCompletion extends Template
 {
-    private const SESSION_KEY = 'rollpix_google_onetap_pending_registration';
+    private PendingRegistration $pendingRegistration;
 
-    private Session $customerSession;
-
-    /**
-     * @param Context $context
-     * @param Session $customerSession
-     * @param array $data
-     */
     public function __construct(
         Context $context,
-        Session $customerSession,
+        PendingRegistration $pendingRegistration,
         array $data = []
     ) {
-        $this->customerSession = $customerSession;
+        $this->pendingRegistration = $pendingRegistration;
         parent::__construct($context, $data);
     }
 
@@ -31,13 +24,18 @@ class RegisterCompletion extends Template
      * Whether the register form is being shown to complete a pending Google sign-up.
      *
      * When true the password fields must be hidden so the passwordless Google flow is preserved.
-     *
-     * @return bool
      */
     public function isPendingGoogleRegistration(): bool
     {
-        $pendingRegistration = $this->customerSession->getData(self::SESSION_KEY);
+        return $this->pendingRegistration->get() !== null;
+    }
 
-        return is_array($pendingRegistration) && !empty($pendingRegistration['provider']);
+    /**
+     * Email captured from Google for the pending sign-up. Empty if not pending.
+     */
+    public function getPendingEmail(): string
+    {
+        $data = $this->pendingRegistration->get();
+        return (string)($data['email'] ?? '');
     }
 }
