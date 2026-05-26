@@ -20,7 +20,14 @@ $pendingEmail = $block->getPendingEmail();
     .field.confirmation,
     .field.password-info,
     .password-strength-meter,
-    .field.choice.show-password {
+    /* Show-password toggle. The Marcovecchio theme renders it as a plain
+       `.field.choice` wrapping `#show-password` (name="show-password", hyphen),
+       so the legacy `.field.choice.show-password` selector never matched it.
+       Target the control directly and, where supported, its whole row. */
+    .field.choice.show-password,
+    .field.choice:has(> #show-password),
+    #show-password,
+    label[for="show-password"] {
         display: none;
     }
 
@@ -44,7 +51,12 @@ $pendingEmail = $block->getPendingEmail();
         var $emailInput = $form.find('input[name="email"]');
         var $passwordInputs = $form.find('input[name="password"], input[name="password_confirmation"]');
         var $passwordFields = $passwordInputs.closest('.field');
-        var $showPasswordRow = $form.find('input[name="show_password"], [data-role="show-password"]').closest('.field');
+        // Match the show-password toggle across themes: Marcovecchio uses
+        // id/name "show-password" (hyphen); other themes use "show_password"
+        // (underscore) or a data-role hook.
+        var $showPasswordRow = $form
+            .find('#show-password, input[name="show-password"], input[name="show_password"], [data-role="show-password"]')
+            .closest('.field');
         var $strengthMeter = $form.find('.password-strength-meter').closest('.field');
         var $switchLink = $('a[data-role="rollpix-onetap-switch-native"]');
 
