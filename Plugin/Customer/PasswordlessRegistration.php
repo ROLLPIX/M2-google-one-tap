@@ -40,6 +40,16 @@ class PasswordlessRegistration
             return;
         }
 
+        // Authoritative native-vs-Google signal: a user who typed their own password is
+        // doing a native registration, never a passwordless Google completion. Drop the
+        // pending registration so the completion observer cannot link this account to
+        // Google. Unlike the client-side opt-out flag below, this cannot be lost to a
+        // re-validation round-trip, a Knockout re-render or browser autofill.
+        if ((string)$this->request->getParam('password') !== '') {
+            $this->pendingRegistration->clear();
+            return;
+        }
+
         // Honour the explicit "switch to native" opt-out from the register form
         // so a user typing their own password is never overridden.
         if ((string)$this->request->getParam('_onetap_native_optout') === '1') {

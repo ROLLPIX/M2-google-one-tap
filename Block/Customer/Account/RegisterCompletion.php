@@ -9,6 +9,12 @@ use Rollpix\GoogleOneTap\Model\PendingRegistration;
 
 class RegisterCompletion extends Template
 {
+    /**
+     * Notice copied verbatim from RegistrationCompletionRequiredException so the opt-out
+     * script can match and dismiss the exact message the controller flashed on redirect.
+     */
+    private const COMPLETION_NOTICE = 'Complete the missing account details to finish registration with Google.';
+
     private PendingRegistration $pendingRegistration;
 
     public function __construct(
@@ -37,5 +43,14 @@ class RegisterCompletion extends Template
     {
         $data = $this->pendingRegistration->get();
         return (string)($data['email'] ?? '');
+    }
+
+    /**
+     * Translated completion notice, matched client-side to dismiss it when the user
+     * switches to a native registration.
+     */
+    public function getCompletionNoticeText(): string
+    {
+        return (string)__(self::COMPLETION_NOTICE);
     }
 }

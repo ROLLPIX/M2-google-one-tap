@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Rollpix\GoogleOneTap\Observer;
 
+use Magento\Framework\App\RequestInterface;
 use Magento\Framework\Event\Observer;
 use Magento\Framework\Event\ObserverInterface;
 use Psr\Log\LoggerInterface;
@@ -17,20 +18,33 @@ class CompletePendingRegistration implements ObserverInterface
 
     private LoggerInterface $logger;
 
+    private RequestInterface $request;
+
     public function __construct(
         PendingRegistration $pendingRegistration,
         SocialLoginService $socialLoginService,
-        LoggerInterface $logger
+        LoggerInterface $logger,
+        RequestInterface $request
     ) {
         $this->pendingRegistration = $pendingRegistration;
         $this->socialLoginService = $socialLoginService;
         $this->logger = $logger;
+        $this->request = $request;
     }
 
     public function execute(Observer $observer): void
     {
         $pendingRegistration = $this->pendingRegistration->get();
         if ($pendingRegistration === null) {
+            return;
+        }
+
+        // Defence-in-depth: a registration carrying a user-typed password is native,
+        // not a passwordless Google completion. Never link it, regardless of whether
+        // the email happens to match the pending Google identity. Mirrors the
+        // authoritative check in Plugin\Customer\PasswordlessRegistration.
+        if ((string)$this->request->getParam('password') !== '') {
+            $this->pendingRegistration->clear();
             return;
         }
 

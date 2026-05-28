@@ -10,6 +10,7 @@ if (!$block->isPendingGoogleRegistration()) {
 }
 
 $pendingEmail = $block->getPendingEmail();
+$completionNotice = $block->getCompletionNoticeText();
 ?>
 
 <!-- Google One Tap: complete registration without a password -->
@@ -47,6 +48,8 @@ $pendingEmail = $block->getPendingEmail();
 <script>
     require(['jquery', 'domReady!'], function ($) {
         var pendingEmail = <?= /* @noEscape */ json_encode(strtolower(trim($pendingEmail))) ?>;
+        var completionNotice = <?= /* @noEscape */ json_encode(trim($completionNotice)) ?>;
+        var nativeMode = false;
         var $form = $('#form-validate').first();
         var $emailInput = $form.find('input[name="email"]');
         var $passwordInputs = $form.find('input[name="password"], input[name="password_confirmation"]');
@@ -81,8 +84,35 @@ $pendingEmail = $block->getPendingEmail();
         $strengthMeter.hide();
         $showPasswordRow.hide();
 
+        // Dismiss the "complete your Google registration" notice — it is misleading
+        // once the user has switched to a native registration. The message is rendered
+        // by Knockout into the page messages region; match it by its text so unrelated
+        // notices are left untouched.
+        function dismissCompletionNotice() {
+            if (!completionNotice) {
+                return;
+            }
+            $('.message').each(function () {
+                if ($.trim($(this).text()) === completionNotice) {
+                    $(this).slideUp(150);
+                }
+            });
+        }
+
         function enterNativeMode(opts) {
             opts = opts || {};
+
+            if (opts.clearEmail) {
+                $emailInput.val('').trigger('focus');
+            }
+
+            // The visual/DOM transition is idempotent: re-running it on every keystroke
+            // would append a duplicate opt-out flag and re-show already-shown rows.
+            if (nativeMode) {
+                return;
+            }
+            nativeMode = true;
+
             // Restore validation, re-enable inputs, show the fields.
             originalValidations.forEach(function (entry) {
                 if (entry.validate) {
@@ -97,14 +127,11 @@ $pendingEmail = $block->getPendingEmail();
             $strengthMeter.show();
             $showPasswordRow.show();
             $switchLink.closest('p').hide();
-
-            if (opts.clearEmail) {
-                $emailInput.val('').trigger('focus');
-            }
+            dismissCompletionNotice();
 
             // Mark the form so the server-side plugin knows the user opted out.
-            // The plugin already checks email mismatch, but this is belt-and-suspenders
-            // in case the user re-types the same Google email manually.
+            // The authoritative guard is the typed password (see PasswordlessRegistration);
+            // this flag covers the edge case of a user who opts out but leaves no password.
             $form.append('<input type="hidden" name="_onetap_native_optout" value="1">');
         }
 
