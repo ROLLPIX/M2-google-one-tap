@@ -4,25 +4,23 @@ declare(strict_types=1);
 namespace Rollpix\GoogleOneTap\Plugin\Customer;
 
 use Magento\Customer\Block\Form\Register;
-use Magento\Customer\Model\Session;
 use Magento\Framework\DataObject;
+use Rollpix\GoogleOneTap\Model\PendingRegistration;
 
 class RegisterFormPrefill
 {
-    private const SESSION_KEY = 'rollpix_google_onetap_pending_registration';
-
-    private Session $customerSession;
+    private PendingRegistration $pendingRegistration;
 
     public function __construct(
-        Session $customerSession
+        PendingRegistration $pendingRegistration
     ) {
-        $this->customerSession = $customerSession;
+        $this->pendingRegistration = $pendingRegistration;
     }
 
     public function afterGetFormData(Register $subject, DataObject $result): DataObject
     {
-        $pendingRegistration = $this->customerSession->getData(self::SESSION_KEY);
-        if (!is_array($pendingRegistration)) {
+        $pendingRegistration = $this->pendingRegistration->get();
+        if ($pendingRegistration === null) {
             return $result;
         }
 

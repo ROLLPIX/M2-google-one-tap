@@ -17,6 +17,7 @@ use Magento\Framework\Exception\{InputException, LocalizedException, NoSuchEntit
 use Magento\Framework\Message\ManagerInterface as MessageManagerInterface;
 use Magento\Framework\HTTP\PhpEnvironment\RemoteAddress;
 use Magento\Store\Model\StoreManagerInterface;
+use Rollpix\GoogleOneTap\Model\PendingRegistration;
 use Rollpix\GoogleOneTap\Model\RateLimiter;
 use Rollpix\GoogleOneTap\Model\SocialLoginService;
 use Rollpix\GoogleOneTap\Exception\RegistrationCompletionRequiredException;
@@ -24,8 +25,6 @@ use Psr\Log\LoggerInterface;
 
 class Response implements CsrfAwareActionInterface
 {
-    private const PENDING_REGISTRATION_SESSION_KEY = 'rollpix_google_onetap_pending_registration';
-
     private Data $config;
 
     private RequestInterface $request;
@@ -48,19 +47,8 @@ class Response implements CsrfAwareActionInterface
 
     private SocialLoginService $socialLoginService;
 
-    /**
-     * @param Data $config
-     * @param RequestInterface $request
-     * @param Session $customerSession
-     * @param StoreManagerInterface $storeManager
-     * @param JsonFactory $resultJsonFactory
-     * @param RedirectFactory $resultRedirectFactory
-     * @param MessageManagerInterface $messageManager
-     * @param LoggerInterface $logger
-     * @param RemoteAddress $remoteAddress
-     * @param RateLimiter $rateLimiter
-     * @param SocialLoginService $socialLoginService
-     */
+    private PendingRegistration $pendingRegistration;
+
     public function __construct(
         Data $config,
         RequestInterface $request,
@@ -72,7 +60,8 @@ class Response implements CsrfAwareActionInterface
         LoggerInterface $logger,
         RemoteAddress $remoteAddress,
         RateLimiter $rateLimiter,
-        SocialLoginService $socialLoginService
+        SocialLoginService $socialLoginService,
+        PendingRegistration $pendingRegistration
     ) {
         $this->config = $config;
         $this->request = $request;
@@ -85,6 +74,7 @@ class Response implements CsrfAwareActionInterface
         $this->remoteAddress = $remoteAddress;
         $this->rateLimiter = $rateLimiter;
         $this->socialLoginService = $socialLoginService;
+        $this->pendingRegistration = $pendingRegistration;
     }
 
     /**
@@ -296,7 +286,7 @@ class Response implements CsrfAwareActionInterface
     private function storePendingRegistration(RegistrationCompletionRequiredException $exception): string
     {
         $pendingRegistration = $exception->getPendingRegistrationData();
-        $this->customerSession->setData(self::PENDING_REGISTRATION_SESSION_KEY, $pendingRegistration);
+        $this->pendingRegistration->set($pendingRegistration);
         $this->customerSession->setCustomerFormData([
             'firstname' => $pendingRegistration['firstname'] ?? '',
             'lastname' => $pendingRegistration['lastname'] ?? '',
@@ -308,6 +298,6 @@ class Response implements CsrfAwareActionInterface
 
     private function clearPendingRegistration(): void
     {
-        $this->customerSession->unsData(self::PENDING_REGISTRATION_SESSION_KEY);
+        $this->pendingRegistration->clear();
     }
 }

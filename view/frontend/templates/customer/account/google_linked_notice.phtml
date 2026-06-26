@@ -7,12 +7,40 @@
 use Magento\Framework\Escaper;
 use Rollpix\GoogleOneTap\Block\Customer\Account\GoogleLinkedNotice;
 
-// Only show for logged in customers
+// Only act for logged in customers
 if (!$block->isCustomerLoggedIn()) {
     return;
 }
+?>
 
-// Only show for accounts linked with Google One Tap (created or linked)
+<?php /* P1/P2: the change-email flow is disabled for every account on this site
+   (independently of Google vs native registration). For Google accounts it does
+   nothing useful, and for any account changing the email diverges it from the
+   linked Google identity — which is what produces duplicate "linked" accounts.
+   Emitted before the Google-link check below so it also covers native accounts. */ ?>
+<style>
+    .form-edit-account .field.choice:has(> #change-email),
+    .form-edit-account #change-email,
+    .form-edit-account label[for="change-email"],
+    /* The dependent "new email / current password" fieldset only appears once the
+       checkbox is ticked; hide it too as a safety net for browsers without :has(). */
+    .form-edit-account .fieldset.change-email-password {
+        display: none !important;
+    }
+</style>
+<script>
+    require(['jquery', 'domReady!'], function ($) {
+        // Hide the change-email checkbox + label for browsers without CSS :has().
+        var $checkbox = $('#change-email');
+        if ($checkbox.length) {
+            $checkbox.prop('checked', false).closest('.field.choice').hide();
+        }
+    });
+</script>
+<?php
+
+// The Google-link notice (and the password-hide block) below only apply to
+// accounts actually linked with Google One Tap.
 if (!$block->isGoogleOneTapLinked()) {
     return;
 }

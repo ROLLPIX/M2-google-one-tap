@@ -8,40 +8,157 @@
 if (!$block->isPendingGoogleRegistration()) {
     return;
 }
+
+$pendingEmail = $block->getPendingEmail();
+$completionNotice = $block->getCompletionNoticeText();
 ?>
 
 <!-- Google One Tap: complete registration without a password -->
-<style>
+<style id="rollpix-onetap-hide">
+    /* No-FOUC safety net before the JS runs. The opt-out path removes this whole
+       <style> element (see enterNativeMode) rather than relying on jQuery .show():
+       the show-password toggle is hidden by an ID-level rule (#show-password) that
+       .show() on the .field wrapper cannot override. */
     .field.password,
     .field.confirmation,
     .field.password-info,
     .password-strength-meter,
-    .field.choice.show-password {
-        display: none !important;
+    /* Show-password toggle. The Marcovecchio theme renders it as a plain
+       `.field.choice` wrapping `#show-password` (name="show-password", hyphen),
+       so the legacy `.field.choice.show-password` selector never matched it.
+       Target the control directly and, where supported, its whole row. */
+    .field.choice.show-password,
+    .field.choice:has(> #show-password),
+    #show-password,
+    label[for="show-password"] {
+        display: none;
+    }
+
+    .rollpix-onetap-switch-native {
+        display: block;
+        margin: 0.5rem 0 1rem;
+        font-size: 0.95em;
     }
 </style>
 
+<p class="rollpix-onetap-switch-native">
+    <a href="#" data-role="rollpix-onetap-switch-native">
+        <?= $escaper->escapeHtml(__('Registrarme con otro email (sin Google)')) ?>
+    </a>
+</p>
+
 <script>
     require(['jquery', 'domReady!'], function ($) {
-        // Target password inputs by name so it works regardless of theme markup.
-        var $inputs = $('input[name="password"], input[name="password_confirmation"]');
+        var pendingEmail = <?= /* @noEscape */ json_encode(strtolower(trim($pendingEmail))) ?>;
+        var completionNotice = <?= /* @noEscape */ json_encode(trim($completionNotice)) ?>;
+        var nativeMode = false;
+        var $form = $('#form-validate').first();
+        var $emailInput = $form.find('input[name="email"]');
+        var $passwordInputs = $form.find('input[name="password"], input[name="password_confirmation"]');
+        var $passwordFields = $passwordInputs.closest('.field');
+        // Match the show-password toggle across themes: Marcovecchio uses
+        // id/name "show-password" (hyphen); other themes use "show_password"
+        // (underscore) or a data-role hook.
+        var $showPasswordRow = $form
+            .find('#show-password, input[name="show-password"], input[name="show_password"], [data-role="show-password"]')
+            .closest('.field');
+        var $strengthMeter = $form.find('.password-strength-meter').closest('.field');
+        var $switchLink = $('a[data-role="rollpix-onetap-switch-native"]');
 
-        $inputs.each(function () {
+        // Snapshot the original validation rules so we can restore them when the user
+        // opts out of the Google completion flow.
+        var originalValidations = [];
+        $passwordInputs.each(function () {
             var $input = $(this);
-
-            // Drop validation rules and disable the inputs so the passwordless Google flow can submit.
-            // The server side fills a random password for this account (see PasswordlessRegistration plugin).
+            originalValidations.push({
+                el: $input,
+                validate: $input.attr('data-validate'),
+                required: $input.attr('required')
+            });
+            // Default state: passwordless Google completion → no validation, disabled (won't submit).
             $input
                 .removeAttr('data-validate')
                 .removeAttr('required')
                 .prop('disabled', true);
-
-            // Hide the whole field row that wraps the input.
             $input.closest('.field').hide();
         });
 
-        // Hide the "show password" toggle and the password strength meter if present.
-        $('.password-strength-meter').closest('.field').hide();
-        $('input[name="show_password"], [data-role="show-password"]').closest('.field').hide();
+        $strengthMeter.hide();
+        $showPasswordRow.hide();
+
+        // Dismiss the "complete your Google registration" notice — it is misleading
+        // once the user has switched to a native registration. The message is rendered
+        // by Knockout into the page messages region; match it by its text so unrelated
+        // notices are left untouched.
+        function dismissCompletionNotice() {
+            if (!completionNotice) {
+                return;
+            }
+            $('.message').each(function () {
+                if ($.trim($(this).text()) === completionNotice) {
+                    $(this).slideUp(150);
+                }
+            });
+        }
+
+        function enterNativeMode(opts) {
+            opts = opts || {};
+
+            if (opts.clearEmail) {
+                $emailInput.val('').trigger('focus');
+            }
+
+            // The visual/DOM transition is idempotent: re-running it on every keystroke
+            // would append a duplicate opt-out flag and re-show already-shown rows.
+            if (nativeMode) {
+                return;
+            }
+            nativeMode = true;
+
+            // Restore validation, re-enable inputs, show the fields.
+            originalValidations.forEach(function (entry) {
+                if (entry.validate) {
+                    entry.el.attr('data-validate', entry.validate);
+                }
+                if (entry.required) {
+                    entry.el.attr('required', entry.required);
+                }
+                entry.el.prop('disabled', false);
+                entry.el.closest('.field').show();
+            });
+            $strengthMeter.show();
+            $showPasswordRow.show();
+
+            // Drop the no-FOUC hide rules entirely. The show-password toggle is hidden
+            // by an ID-level rule (#show-password{display:none}) that the .show() above —
+            // which only sets inline display on the .field wrapper — cannot override, so
+            // removing the whole <style> is the only clean way to bring the toggle back.
+            var hideStyle = document.getElementById('rollpix-onetap-hide');
+            if (hideStyle && hideStyle.parentNode) {
+                hideStyle.parentNode.removeChild(hideStyle);
+            }
+
+            $switchLink.closest('p').hide();
+            dismissCompletionNotice();
+
+            // Mark the form so the server-side plugin knows the user opted out.
+            // The authoritative guard is the typed password (see PasswordlessRegistration);
+            // this flag covers the edge case of a user who opts out but leaves no password.
+            $form.append('<input type="hidden" name="_onetap_native_optout" value="1">');
+        }
+
+        // Explicit opt-out link
+        $switchLink.on('click', function (e) {
+            e.preventDefault();
+            enterNativeMode({ clearEmail: true });
+        });
+
+        // Implicit opt-out: user edits the email to something other than the pending one.
+        $emailInput.on('input change blur', function () {
+            var current = ($emailInput.val() || '').toLowerCase().trim();
+            if (pendingEmail && current && current !== pendingEmail) {
+                enterNativeMode({ clearEmail: false });
+            }
+        });
     });
 </script>
