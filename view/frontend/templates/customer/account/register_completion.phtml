@@ -14,9 +14,11 @@ $completionNotice = $block->getCompletionNoticeText();
 ?>
 
 <!-- Google One Tap: complete registration without a password -->
-<style>
-    /* No-FOUC safety net before the JS runs. Not !important so the escape hatch
-       (jQuery .show()) can re-display the rows when the user opts out. */
+<style id="rollpix-onetap-hide">
+    /* No-FOUC safety net before the JS runs. The opt-out path removes this whole
+       <style> element (see enterNativeMode) rather than relying on jQuery .show():
+       the show-password toggle is hidden by an ID-level rule (#show-password) that
+       .show() on the .field wrapper cannot override. */
     .field.password,
     .field.confirmation,
     .field.password-info,
@@ -126,6 +128,16 @@ $completionNotice = $block->getCompletionNoticeText();
             });
             $strengthMeter.show();
             $showPasswordRow.show();
+
+            // Drop the no-FOUC hide rules entirely. The show-password toggle is hidden
+            // by an ID-level rule (#show-password{display:none}) that the .show() above —
+            // which only sets inline display on the .field wrapper — cannot override, so
+            // removing the whole <style> is the only clean way to bring the toggle back.
+            var hideStyle = document.getElementById('rollpix-onetap-hide');
+            if (hideStyle && hideStyle.parentNode) {
+                hideStyle.parentNode.removeChild(hideStyle);
+            }
+
             $switchLink.closest('p').hide();
             dismissCompletionNotice();
 
