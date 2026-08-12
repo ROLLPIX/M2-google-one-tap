@@ -43,7 +43,12 @@ class CompletePendingRegistration implements ObserverInterface
         // not a passwordless Google completion. Never link it, regardless of whether
         // the email happens to match the pending Google identity. Mirrors the
         // authoritative check in Plugin\Customer\PasswordlessRegistration.
-        if ((string)$this->request->getParam('password') !== '') {
+        //
+        // The password the plugin injects for a Google completion is exempt — it lives in
+        // the same request, so without this exemption the check would fire on every Google
+        // sign-up and no completed account would ever be linked.
+        $passwordWasInjected = !empty($pendingRegistration[PendingRegistration::FLAG_PASSWORD_INJECTED]);
+        if (!$passwordWasInjected && (string)$this->request->getParam('password') !== '') {
             $this->pendingRegistration->clear();
             return;
         }

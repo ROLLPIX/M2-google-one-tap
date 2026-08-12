@@ -16,6 +16,12 @@ class PendingRegistration
     public const SESSION_KEY = 'rollpix_google_onetap_pending_registration';
     public const TTL_SECONDS = 600;
 
+    /**
+     * Marks that the password on this request was injected by the module, not typed by the
+     * user. Lives in the session (not in a request param) so it cannot be forged by a POST.
+     */
+    public const FLAG_PASSWORD_INJECTED = 'password_injected';
+
     private Session $customerSession;
 
     public function __construct(Session $customerSession)
@@ -51,6 +57,23 @@ class PendingRegistration
     public function set(array $data): void
     {
         $data['created_at'] = time();
+        $this->customerSession->setData(self::SESSION_KEY, $data);
+    }
+
+    /**
+     * Flag the pending registration as carrying a module-injected password.
+     *
+     * Written straight onto the stored array so `created_at` — and therefore the TTL — is
+     * preserved; going through set() would silently restart the 10 minute window.
+     */
+    public function markPasswordInjected(): void
+    {
+        $data = $this->customerSession->getData(self::SESSION_KEY);
+        if (!is_array($data)) {
+            return;
+        }
+
+        $data[self::FLAG_PASSWORD_INJECTED] = true;
         $this->customerSession->setData(self::SESSION_KEY, $data);
     }
 

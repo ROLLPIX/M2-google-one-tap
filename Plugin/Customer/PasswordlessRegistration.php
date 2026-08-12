@@ -68,6 +68,12 @@ class PasswordlessRegistration
         $password = $this->generatePassword();
         $this->request->setParam('password', $password);
         $this->request->setParam('password_confirmation', $password);
+
+        // Record the injection in the session. Observer\CompletePendingRegistration runs later
+        // in this same request and rejects registrations that carry a password, on the premise
+        // that only a native sign-up has one — without this flag it would read the password we
+        // just injected and refuse to link the account to Google.
+        $this->pendingRegistration->markPasswordInjected();
     }
 
     /**
