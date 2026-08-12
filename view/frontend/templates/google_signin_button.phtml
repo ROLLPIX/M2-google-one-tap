@@ -47,19 +47,29 @@ if ($block->shouldRender()) :
             // ── Relocation: Login page ───────────────────────────────────
 
             function relocateLogin(wrapper, pos) {
-                var loginBlock = document.querySelector('.block-customer-login .block-content');
-                if (!loginBlock) return false;
+                // Themes that keep the native login markup match the first selector. Themes that
+                // replace the login form outright (an SMS/OTP login, a custom one-column layout)
+                // have neither .block-customer-login nor form.form-login, so fall back to
+                // whatever login form the page does have, and finally to the layout container.
+                var anchorForm = document.querySelector('.block-customer-login form.form-login')
+                              || document.querySelector('form.form-login')
+                              || document.querySelector('.login-container form');
+                var container = document.querySelector('.block-customer-login .block-content')
+                             || (anchorForm && anchorForm.parentNode)
+                             || document.querySelector('.login-container');
+                if (!container) return false;
 
                 if (pos === 'above') {
-                    var form = loginBlock.querySelector('form.form-login');
-                    if (form) {
-                        loginBlock.insertBefore(wrapper, form);
+                    // Insert relative to the form's own parent: the form is not necessarily a
+                    // direct child of the container, and insertBefore() throws if it isn't.
+                    if (anchorForm && anchorForm.parentNode) {
+                        anchorForm.parentNode.insertBefore(wrapper, anchorForm);
                     } else {
-                        loginBlock.insertBefore(wrapper, loginBlock.firstChild);
+                        container.insertBefore(wrapper, container.firstChild);
                     }
                 } else {
                     // 'below' (default)
-                    loginBlock.appendChild(wrapper);
+                    container.appendChild(wrapper);
                 }
                 wrapper.style.display = '';
                 return true;
@@ -321,9 +331,23 @@ if ($block->shouldRender()) :
                 if (tryInit()) return;
 
                 var attempts = 0;
-                var maxAttempts = 80; // 8 seconds (80 * 100ms)
+                var maxAttempts = 80;      // 8 seconds (80 * 100ms)
+                var relocateAttempts = 40; // give the anchor 4 seconds to appear
                 var interval = setInterval(function() {
                     attempts++;
+
+                    // Fail visible: an anchor that has not shown up in 4 seconds is not late,
+                    // it does not exist in this theme. Show the wrapper where it was rendered
+                    // and let the button initialise there — a button in a suboptimal spot beats
+                    // the previous behaviour, which left it display:none with nothing logged.
+                    if (!relocated && attempts >= relocateAttempts) {
+                        var wrapper = document.getElementById(wrapperId);
+                        if (wrapper) {
+                            wrapper.style.display = '';
+                            relocated = true;
+                        }
+                    }
+
                     if (tryInit() || attempts >= maxAttempts) {
                         clearInterval(interval);
                     }
